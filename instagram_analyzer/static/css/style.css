@@ -117,6 +117,26 @@ body {
   padding: 0.65rem 0.75rem;
 }
 
+/* ── 인증 페이지 배경 ──────────────────────────────────── */
+.auth-bg {
+  background: linear-gradient(135deg, #fafafa 0%, #f0e8f8 100%);
+}
+
+/* ── 사용자 아바타 (네비게이션) ────────────────────────── */
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.6);
+}
+
 /* ── 반응형 조정 ─────────────────────────────────────── */
 @media (max-width: 576px) {
   .stat-number { font-size: 1.4rem; }

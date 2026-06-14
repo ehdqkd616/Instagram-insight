@@ -1,22 +1,24 @@
 import io
 import csv
-from flask import Blueprint, render_template, request, jsonify, Response, current_app
+from flask import Blueprint, render_template, request, jsonify, Response
+from flask_login import login_required, current_user
 from services.activity_service import search_sent_activity, search_received_activity
 
 bp = Blueprint("activity", __name__)
 
 
 def _data_dir():
-    return current_app.config["DATA_DIR"]
+    return current_user.data_dir
 
 
 @bp.route("/activity/search")
+@login_required
 def activity_page():
-    username = request.args.get("username", "")
-    direction = request.args.get("direction", "sent")
+    username      = request.args.get("username", "")
+    direction     = request.args.get("direction", "sent")
     activity_type = request.args.get("activity_type", "all")
-    from_date = request.args.get("from_date", "")
-    to_date = request.args.get("to_date", "")
+    from_date     = request.args.get("from_date", "")
+    to_date       = request.args.get("to_date", "")
 
     data = None
     if username:
@@ -37,12 +39,13 @@ def activity_page():
 
 
 @bp.route("/api/activity")
+@login_required
 def api_activity():
-    username = request.args.get("username", "")
-    direction = request.args.get("type", "sent")
+    username      = request.args.get("username", "")
+    direction     = request.args.get("type", "sent")
     activity_type = request.args.get("activity_type", "all")
-    from_date = request.args.get("from_date", "")
-    to_date = request.args.get("to_date", "")
+    from_date     = request.args.get("from_date", "")
+    to_date       = request.args.get("to_date", "")
 
     if not username:
         return jsonify({"error": "username 파라미터가 필요합니다."}), 400
@@ -53,9 +56,10 @@ def api_activity():
 
 
 @bp.route("/api/export/activity/csv")
+@login_required
 def export_activity_csv():
-    username = request.args.get("username", "unknown")
-    direction = request.args.get("direction", "sent")
+    username      = request.args.get("username", "unknown")
+    direction     = request.args.get("direction", "sent")
     activity_type = request.args.get("activity_type", "all")
 
     if direction == "sent":
@@ -63,7 +67,7 @@ def export_activity_csv():
     else:
         data = search_received_activity(_data_dir(), username, activity_type)
 
-    rows = data.get("activities", [])
+    rows   = data.get("activities", [])
     fields = ["type", "occurred_at", "content", "post_url"]
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")

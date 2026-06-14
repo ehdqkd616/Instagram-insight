@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}시스템 로그 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2 flex-wrap">
+  <h5 class="mb-0"><i class="bi bi-terminal me-2 text-ig-purple"></i>시스템 로그</h5>
+
+  <!-- 레벨 필터 -->
+  <div class="btn-group btn-group-sm ms-2" id="levelFilter">
+    <button class="btn btn-outline-secondary active" data-level="ALL">전체</button>
+    <button class="btn btn-outline-primary"          data-level="INFO">INFO</button>
+    <button class="btn btn-outline-warning"          data-level="WARNING">WARN</button>
+    <button class="btn btn-outline-danger"           data-level="ERROR">ERROR</button>
+    <button class="btn btn-outline-secondary"        data-level="DEBUG">DEBUG</button>
+  </div>
+
+  <!-- 자동 새로고침 -->
+  <div class="form-check form-switch ms-3 mb-0">
+    <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+    <label class="form-check-label small" for="autoRefresh">자동 새로고침 (3s)</label>
+  </div>
+
+  <!-- 버튼 -->
+  <button class="btn btn-sm btn-outline-secondary ms-auto" id="scrollBottom">
+    <i class="bi bi-arrow-down-circle me-1"></i>최신으로
+  </button>
+  <a href="/api/logs/download" class="btn btn-sm btn-outline-success">
+    <i class="bi bi-download me-1"></i>로그 다운로드
+  </a>
+</div>
+
+<!-- 통계 배지 -->
+<div id="logStats" class="mb-2 small text-muted"></div>
+
+<!-- 로그 테이블 -->
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div id="logContainer" style="max-height:70vh; overflow-y:auto; font-family: monospace; font-size:0.82rem;">
+      <table class="table table-sm mb-0" id="logTable">
+        <thead class="table-dark sticky-top">
+          <tr>
+            <th style="width:145px">시각</th>
+            <th style="width:80px">레벨</th>
+            <th style="width:200px">모듈</th>
+            <th>메시지</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="4" class="text-center text-muted py-4">로딩 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  let currentLevel = "ALL";
+  let autoRefresh  = true;
+  let timer        = null;
+
+  const levelClass = {
+    DEBUG:    "text-secondary",
+    INFO:     "text-info",
+    WARNING:  "text-warning",
+    ERROR:    "text-danger",
+    CRITICAL: "text-danger fw-bold",
+  };
+  const levelBadge = {
+    DEBUG:    "secondary",
+    INFO:     "primary",
+    WARNING:  "warning",
+    ERROR:    "danger",
+    CRITICAL: "danger",
+  };
+
+  async function fetchLogs() {
+    try {
+      const res  = await fetch(`/api/logs?n=400&level=${currentLevel}`);
+      const data = await res.json();
+      renderLogs(data.entries);
+      updateStats(data.entries);
+    } catch (e) {
+      console.error("로그 조회 실패:", e);
+    }
+  }
+
+  function renderLogs(entries) {
+    const tbody = document.getElementById("logBody");
+    if (!entries.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">로그가 없습니다.</td></tr>';
+      return;
+    }
+
+    const rows = entries.map(e => {
+      const badge = levelBadge[e.level] || "secondary";
+      const cls   = levelClass[e.level]  || "";
+      const msg   = escHtml(e.message);
+      return `<tr class="${cls}">
+        <td class="text-muted">${e.ts}</td>
+        <td><span class="badge bg-${badge}">${e.level}</span></td>
+        <td class="text-muted text-truncate" style="max-width:200px" title="${escHtml(e.module)}">${escHtml(e.module)}</td>
+        <td style="word-break:break-all">${msg}</td>
+      </tr>`;
+    }).join("");
+    tbody.innerHTML = rows;
+  }
+
+  function updateStats(entries) {
+    const counts = { INFO: 0, WARNING: 0, ERROR: 0, DEBUG: 0 };
+    entries.forEach(e => { if (counts[e.level] !== undefined) counts[e.level]++; });
+    document.getElementById("logStats").innerHTML =
+      `총 <strong>${entries.length}</strong>건 &nbsp;|&nbsp; ` +
+      `INFO <span class="badge bg-primary">${counts.INFO}</span> &nbsp;` +
+      `WARN <span class="badge bg-warning text-dark">${counts.WARNING}</span> &nbsp;` +
+      `ERROR <span class="badge bg-danger">${counts.ERROR}</span> &nbsp;` +
+      `DEBUG <span class="badge bg-secondary">${counts.DEBUG}</span>`;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(fetchLogs, 3000);
+  }
+  function stopTimer() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  // 레벨 필터 클릭
+  document.querySelectorAll("#levelFilter button").forEach(btn => {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("#levelFilter button").forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      currentLevel = this.dataset.level;
+      fetchLogs();
+    });
+  });
+
+  // 자동 새로고침 토글
+  document.getElementById("autoRefresh").addEventListener("change", function () {
+    autoRefresh = this.checked;
+    autoRefresh ? startTimer() : stopTimer();
+  });
+
+  // 최신으로 스크롤
+  document.getElementById("scrollBottom").addEventListener("click", () => {
+    const c = document.getElementById("logContainer");
+    c.scrollTop = c.scrollHeight;
+  });
+
+  // 초기 로드
+  fetchLogs();
+  startTimer();
+
+  // 새 로그 도착 시 자동 스크롤 (아래에 있을 때만)
+  const observer = new MutationObserver(() => {
+    const c = document.getElementById("logContainer");
+    const atBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 80;
+    if (atBottom) c.scrollTop = c.scrollHeight;
+  });
+  observer.observe(document.getElementById("logBody"), { childList: true });
+})();
+</script>
+{% endblock %}

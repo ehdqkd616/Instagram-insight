@@ -1,57 +1,77 @@
+import logging
+
 from .parser import parse_liked_posts, parse_liked_comments, parse_comments
+
+logger = logging.getLogger("instagram_analyzer.activity_service")
 
 
 def search_sent_activity(data_dir, username, activity_type="all", from_date="", to_date=""):
     """내가 특정 계정에 남긴 좋아요/댓글 (F-04 발신)."""
-    results = []
     uname = username.lower().strip()
+    logger.info(
+        "search_sent_activity: username=%r, type=%s, from=%s, to=%s",
+        username, activity_type, from_date, to_date,
+    )
+
+    results = []
 
     if activity_type in ("all", "like"):
-        for item in parse_liked_posts(data_dir):
+        liked = parse_liked_posts(data_dir)
+        before = len(results)
+        for item in liked:
             if uname in item["username"].lower():
                 results.append({
-                    "type": "like",
-                    "post_url": item["post_url"],
-                    "content": "",
+                    "type":       "like",
+                    "post_url":   item["post_url"],
+                    "content":    "",
                     "occurred_at": item["liked_at"],
-                    "timestamp": item["timestamp"],
+                    "timestamp":  item["timestamp"],
                 })
-        for item in parse_liked_comments(data_dir):
+        logger.debug("liked_posts 검색: %d건 → %d건 매칭", len(liked), len(results) - before)
+
+        liked_c = parse_liked_comments(data_dir)
+        before = len(results)
+        for item in liked_c:
             if uname in item["username"].lower():
                 results.append({
-                    "type": "like_comment",
-                    "post_url": item["post_url"],
-                    "content": "",
+                    "type":       "like_comment",
+                    "post_url":   item["post_url"],
+                    "content":    "",
                     "occurred_at": item["liked_at"],
-                    "timestamp": item["timestamp"],
+                    "timestamp":  item["timestamp"],
                 })
+        logger.debug("liked_comments 검색: %d건 → %d건 매칭", len(liked_c), len(results) - before)
 
     if activity_type in ("all", "comment"):
-        for item in parse_comments(data_dir):
+        comments = parse_comments(data_dir)
+        before = len(results)
+        for item in comments:
             if uname in item["username"].lower():
                 results.append({
-                    "type": "comment",
-                    "post_url": item["post_url"],
-                    "content": item["content"],
+                    "type":       "comment",
+                    "post_url":   item["post_url"],
+                    "content":    item["content"],
                     "occurred_at": item["commented_at"],
-                    "timestamp": item["timestamp"],
+                    "timestamp":  item["timestamp"],
                 })
+        logger.debug("comments 검색: %d건 → %d건 매칭", len(comments), len(results) - before)
 
     results = _apply_date_filter(results, from_date, to_date)
     results.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    logger.info("search_sent_activity 결과: %d건", len(results))
     return {"username": username, "total": len(results), "activities": results}
 
 
 def search_received_activity(data_dir, username, activity_type="all", from_date="", to_date=""):
     """특정 계정이 내 게시물에 남긴 좋아요/댓글 (F-03 수신).
 
-    liked_posts / liked_comments 는 '내가 누른' 데이터이므로 수신 분석에 직접 사용 불가.
-    post_comments_1 에서 내 게시물에 달린 댓글은 별도 파일(comments_on_my_posts)이 필요하지만
-    인스타그램 내보내기에 포함되지 않을 수 있으므로 현재 파악 가능한 정보만 반환.
+    인스타그램 공식 내보내기에는 타인이 내 게시물에 남긴 좋아요·댓글 데이터가 포함되지 않음.
     """
-    # 인스타그램 공식 내보내기에서 '타인이 내 게시물에 남긴 좋아요'는 제공되지 않음.
-    # post_comments_1.json은 '내가 남긴 댓글'이므로 F-03(수신)에는 사용 불가.
-    # 따라서 현재 구조에서는 수신 데이터를 제공할 수 없음을 안내.
+    logger.warning(
+        "search_received_activity: username=%r — 인스타그램 내보내기에 수신 데이터 미포함",
+        username,
+    )
     return {
         "username": username,
         "total": 0,

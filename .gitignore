@@ -1,0 +1,85 @@
+# ──────────────────────────────────────────────────────────
+# 🔒 보안 민감 파일 (절대 커밋 금지)
+# ──────────────────────────────────────────────────────────
+
+# Flask 영구 시크릿 키
+instagram_analyzer/.secret_key
+
+# SQLite 사용자 DB (비밀번호 해시 포함)
+instagram_analyzer/users.db
+instagram_analyzer/*.db
+
+# 업로드된 인스타그램 개인 데이터
+instagram_analyzer/data/
+
+# 앱 로그 (사용자 활동 포함)
+instagram_analyzer/logs/
+
+# 환경변수 파일
+.env
+.env.*
+!.env.example
+
+
+# ──────────────────────────────────────────────────────────
+# 🐍 Python
+# ──────────────────────────────────────────────────────────
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+.Python
+
+# 빌드 / 배포 산출물
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+
+# 가상 환경
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+
+# ──────────────────────────────────────────────────────────
+# 🖥️ OS / IDE
+# ──────────────────────────────────────────────────────────
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains
+.idea/
+*.iml
+
+# Vim / Emacs 임시 파일
+*.swp
+*.swo
+*~
+
+
+# ──────────────────────────────────────────────────────────
+# 🌐 Flask / 웹
+# ──────────────────────────────────────────────────────────
+
+instance/
+.webassets-cache

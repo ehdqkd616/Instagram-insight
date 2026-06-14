@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>회원가입 &mdash; Instagram Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="auth-bg d-flex align-items-center min-vh-100">
+
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-sm-8 col-md-5 col-lg-4">
+
+      <!-- 로고 -->
+      <div class="text-center mb-4">
+        <div class="ig-logo-circle mx-auto mb-3">
+          <i class="bi bi-camera2" style="font-size:2rem;color:#fff;"></i>
+        </div>
+        <h4 class="fw-bold">Instagram Analyzer</h4>
+        <p class="text-muted small">계정을 만들면 데이터를 영구 보관합니다.</p>
+      </div>
+
+      <!-- 플래시 메시지 -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show py-2 small">
+              {{ message }}
+              <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- 회원가입 카드 -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">회원가입</h5>
+          <form method="POST">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">아이디 <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                <input type="text" name="username" class="form-control" placeholder="영문·숫자 3자 이상"
+                       autofocus autocomplete="username" minlength="3" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">표시 이름 <span class="text-muted">(선택)</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                <input type="text" name="display_name" class="form-control" placeholder="화면에 표시될 이름">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">비밀번호 <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                <input type="password" name="password" class="form-control" placeholder="6자 이상"
+                       autocomplete="new-password" minlength="6" required>
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label small fw-semibold">비밀번호 확인 <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                <input type="password" name="confirm" class="form-control" placeholder="비밀번호 재입력"
+                       autocomplete="new-password" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-ig w-100">
+              <i class="bi bi-person-plus me-1"></i>회원가입
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <p class="text-center mt-3 small text-muted">
+        이미 계정이 있으신가요?
+        <a href="{{ url_for('auth.login') }}" class="text-ig-pink fw-semibold text-decoration-none">로그인</a>
+      </p>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

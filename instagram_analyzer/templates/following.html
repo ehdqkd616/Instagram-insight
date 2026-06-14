@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}팔로잉 목록 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<!-- 통계 카드 -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.following_count }}</div>
+      <div class="stat-label">전체 팔로잉</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.followers_count }}</div>
+      <div class="stat-label">전체 팔로워</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.mutual_count }}</div>
+      <div class="stat-label">맞팔</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number text-warning">{{ stats.not_following_back }}</div>
+      <div class="stat-label">맞팔 안 됨</div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex align-items-center mb-3">
+      <h5 class="mb-0"><i class="bi bi-person-check me-2 text-ig-purple"></i>팔로잉 목록</h5>
+      <span class="badge bg-secondary ms-2">{{ data.total }}명</span>
+      <a href="{{ url_for('followers.export_csv', type='following') }}" class="btn btn-outline-success btn-sm ms-auto">
+        <i class="bi bi-download me-1"></i>CSV 다운로드
+      </a>
+    </div>
+
+    {% if stats.following_count == 0 %}
+    <div class="alert alert-warning mb-3">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      <strong>following.json 파일을 찾을 수 없거나 파싱에 실패했습니다.</strong><br>
+      <span class="small">
+        Instagram 내보내기 ZIP 안에 <code>following.json</code> 파일이 있는지 확인하고,
+        <a href="{{ url_for('logs_page') }}" class="alert-link">로그 페이지</a>에서 오류 내용을 확인해보세요.
+      </span>
+    </div>
+    {% endif %}
+
+    <!-- 필터 폼 -->
+    <form method="GET" class="row g-2 mb-3">
+      <div class="col-md-4">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="search" class="form-control" placeholder="계정명 검색" value="{{ search }}">
+        </div>
+      </div>
+      <div class="col-md-2">
+        <select name="sort" class="form-select">
+          <option value="newest"   {% if sort=='newest'   %}selected{% endif %}>최신 팔로우 순</option>
+          <option value="oldest"   {% if sort=='oldest'   %}selected{% endif %}>오래된 순</option>
+          <option value="username" {% if sort=='username' %}selected{% endif %}>계정명 순</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-ig w-100">필터 적용</button>
+      </div>
+    </form>
+
+    <!-- 테이블 -->
+    {% if data.following %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>계정명</th>
+            <th>팔로우 시작일</th>
+            <th>맞팔 여부</th>
+            <th>프로필</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in data.following %}
+          <tr>
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td>
+              <a href="{{ f.profile_url }}" target="_blank" class="text-decoration-none fw-semibold">
+                @{{ f.username }}
+              </a>
+            </td>
+            <td class="text-muted small">{{ f.followed_at }}</td>
+            <td>
+              {% if f.get('is_mutual') %}
+                <span class="badge bg-success">맞팔</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">맞팔 안 됨</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ f.profile_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox display-4 d-block mb-2"></i>
+      {% if search %}검색 결과가 없습니다.{% else %}팔로잉 데이터가 없습니다. <a href="{{ url_for('index') }}">파일을 업로드</a>해주세요.{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

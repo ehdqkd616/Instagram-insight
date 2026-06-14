@@ -1,8 +1,10 @@
 import io
 import csv
-from flask import Blueprint, render_template, request, jsonify, Response, current_app
+from flask import Blueprint, render_template, request, jsonify, Response
+from flask_login import login_required, current_user
 from services.follower_service import (
     get_followers,
+    get_following,
     get_not_following_back,
     get_only_following_me,
     get_mutual,
@@ -13,26 +15,41 @@ bp = Blueprint("followers", __name__)
 
 
 def _data_dir():
-    return current_app.config["DATA_DIR"]
+    return current_user.data_dir
 
 
 @bp.route("/followers")
+@login_required
 def followers_page():
-    search = request.args.get("search", "")
-    sort = request.args.get("sort", "newest")
+    search    = request.args.get("search", "")
+    sort      = request.args.get("sort", "newest")
     from_date = request.args.get("from_date", "")
-    to_date = request.args.get("to_date", "")
-    data = get_followers(_data_dir(), search, sort, from_date, to_date)
+    to_date   = request.args.get("to_date", "")
+    data  = get_followers(_data_dir(), search, sort, from_date, to_date)
     stats = get_stats(_data_dir())
     return render_template("followers.html", data=data, stats=stats,
                            search=search, sort=sort, from_date=from_date, to_date=to_date)
 
 
-@bp.route("/unfollowers")
-def unfollowers_page():
-    tab = request.args.get("tab", "not_following_back")
-    search = request.args.get("search", "")
+@bp.route("/following")
+@login_required
+def following_page():
+    search    = request.args.get("search", "")
+    sort      = request.args.get("sort", "newest")
+    from_date = request.args.get("from_date", "")
+    to_date   = request.args.get("to_date", "")
+    data  = get_following(_data_dir(), search, sort, from_date, to_date)
     stats = get_stats(_data_dir())
+    return render_template("following.html", data=data, stats=stats,
+                           search=search, sort=sort, from_date=from_date, to_date=to_date)
+
+
+@bp.route("/unfollowers")
+@login_required
+def unfollowers_page():
+    tab    = request.args.get("tab", "not_following_back")
+    search = request.args.get("search", "")
+    stats  = get_stats(_data_dir())
 
     if tab == "not_following_back":
         data = get_not_following_back(_data_dir(), search)
@@ -46,18 +63,30 @@ def unfollowers_page():
 
 # ── JSON API ──────────────────────────────────────────────────────────────────
 
-@bp.route("/api/followers")
-def api_followers():
-    search = request.args.get("search", "")
-    sort = request.args.get("sort", "newest")
+@bp.route("/api/following")
+@login_required
+def api_following():
+    search    = request.args.get("search", "")
+    sort      = request.args.get("sort", "newest")
     from_date = request.args.get("from_date", "")
-    to_date = request.args.get("to_date", "")
+    to_date   = request.args.get("to_date", "")
+    return jsonify(get_following(_data_dir(), search, sort, from_date, to_date))
+
+
+@bp.route("/api/followers")
+@login_required
+def api_followers():
+    search    = request.args.get("search", "")
+    sort      = request.args.get("sort", "newest")
+    from_date = request.args.get("from_date", "")
+    to_date   = request.args.get("to_date", "")
     return jsonify(get_followers(_data_dir(), search, sort, from_date, to_date))
 
 
 @bp.route("/api/unfollowers")
+@login_required
 def api_unfollowers():
-    tab = request.args.get("tab", "not_following_back")
+    tab    = request.args.get("tab", "not_following_back")
     search = request.args.get("search", "")
     if tab == "not_following_back":
         return jsonify(get_not_following_back(_data_dir(), search))
@@ -67,6 +96,7 @@ def api_unfollowers():
 
 
 @bp.route("/api/stats")
+@login_required
 def api_stats():
     return jsonify(get_stats(_data_dir()))
 
@@ -74,25 +104,24 @@ def api_stats():
 # ── CSV Export ────────────────────────────────────────────────────────────────
 
 @bp.route("/api/export/csv")
+@login_required
 def export_csv():
     export_type = request.args.get("type", "followers")
 
     if export_type == "followers":
-        data = get_followers(_data_dir())
-        rows = data["followers"]
-        fields = ["username", "followed_at", "profile_url"]
+        rows     = get_followers(_data_dir())["followers"]
         filename = "followers.csv"
+    elif export_type == "following":
+        rows     = get_following(_data_dir())["following"]
+        filename = "following.csv"
     elif export_type == "not_following_back":
-        data = get_not_following_back(_data_dir())
-        rows = data["accounts"]
-        fields = ["username", "followed_at", "profile_url"]
+        rows     = get_not_following_back(_data_dir())["accounts"]
         filename = "not_following_back.csv"
     else:
-        data = get_only_following_me(_data_dir())
-        rows = data["accounts"]
-        fields = ["username", "followed_at", "profile_url"]
+        rows     = get_only_following_me(_data_dir())["accounts"]
         filename = "only_following_me.csv"
 
+    fields = ["username", "followed_at", "profile_url"]
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
