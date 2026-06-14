@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}활동 검색 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="mb-3"><i class="bi bi-search me-2 text-ig-pink"></i>계정 활동 검색</h5>
+
+    <form method="GET" id="activityForm">
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">계정명</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-at"></i></span>
+            <input type="text" name="username" class="form-control" placeholder="username" value="{{ username }}" required>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">방향</label>
+          <select name="direction" class="form-select">
+            <option value="sent" {% if direction=='sent' %}selected{% endif %}>내가 보낸 활동</option>
+            <option value="received" {% if direction=='received' %}selected{% endif %}>받은 활동</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">활동 유형</label>
+          <select name="activity_type" class="form-select">
+            <option value="all" {% if activity_type=='all' %}selected{% endif %}>전체</option>
+            <option value="like" {% if activity_type=='like' %}selected{% endif %}>좋아요만</option>
+            <option value="comment" {% if activity_type=='comment' %}selected{% endif %}>댓글만</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">시작일</label>
+          <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">종료일</label>
+          <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-ig">
+        <i class="bi bi-search me-1"></i>검색
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if data %}
+  {% if data.notice %}
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>{{ data.notice }}
+  </div>
+  {% endif %}
+
+  <div class="d-flex align-items-center mb-3">
+    <h6 class="mb-0">
+      <strong>@{{ data.username }}</strong>
+      {% if direction == 'sent' %}에게 보낸{% else %}으로부터 받은{% endif %} 활동
+    </h6>
+    <span class="badge bg-secondary ms-2">총 {{ data.total }}건</span>
+    {% if data.activities %}
+    <a href="{{ url_for('activity.export_activity_csv', username=username, direction=direction, activity_type=activity_type) }}"
+       class="btn btn-outline-success btn-sm ms-auto">
+      <i class="bi bi-download me-1"></i>CSV
+    </a>
+    {% endif %}
+  </div>
+
+  {% if data.activities %}
+  <div class="activity-feed">
+    {% for act in data.activities %}
+    <div class="activity-card card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex align-items-start">
+          <div class="activity-icon me-3">
+            {% if act.type == 'like' %}
+              <span class="badge bg-danger fs-5 p-2"><i class="bi bi-heart-fill"></i></span>
+            {% elif act.type == 'like_comment' %}
+              <span class="badge bg-warning text-dark fs-5 p-2"><i class="bi bi-hand-thumbs-up-fill"></i></span>
+            {% else %}
+              <span class="badge bg-primary fs-5 p-2"><i class="bi bi-chat-fill"></i></span>
+            {% endif %}
+          </div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="fw-semibold">
+                {% if act.type == 'like' %}좋아요
+                {% elif act.type == 'like_comment' %}댓글 좋아요
+                {% else %}댓글
+                {% endif %}
+                &mdash;
+                <a href="{{ url_for('activity.activity_page', username=username, direction=direction) }}" class="text-decoration-none">@{{ data.username }}</a>
+                {% if direction == 'sent' %}의 게시물에{% else %}이 내 게시물에{% endif %}
+              </span>
+              <span class="text-muted small">{{ act.occurred_at }}</span>
+            </div>
+            {% if act.content %}
+            <p class="mb-1 text-muted">"{{ act.content }}"</p>
+            {% endif %}
+            {% if act.post_url %}
+            <a href="{{ act.post_url }}" target="_blank" class="small text-ig-pink">
+              <i class="bi bi-box-arrow-up-right me-1"></i>게시물 바로가기
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% elif not data.notice %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-inbox display-4 d-block mb-2"></i>
+    활동 내역이 없습니다.
+  </div>
+  {% endif %}
+
+{% elif username == '' %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-search display-4 d-block mb-2"></i>
+  <p>계정명을 입력하고 검색하세요.</p>
+  <p class="small">내가 좋아요·댓글을 남긴 계정명을 입력하면 활동 이력을 조회합니다.</p>
+</div>
+{% endif %}
+{% endblock %}

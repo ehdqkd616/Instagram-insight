@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}팔로워 목록 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<!-- 통계 카드 -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.followers_count }}</div>
+      <div class="stat-label">전체 팔로워</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.following_count }}</div>
+      <div class="stat-label">전체 팔로잉</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.mutual_count }}</div>
+      <div class="stat-label">맞팔</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.mutual_ratio }}%</div>
+      <div class="stat-label">맞팔 비율</div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex align-items-center mb-3">
+      <h5 class="mb-0"><i class="bi bi-people me-2 text-ig-pink"></i>팔로워 목록</h5>
+      <span class="badge bg-secondary ms-2">{{ data.total }}명</span>
+      <a href="{{ url_for('followers.export_csv', type='followers') }}" class="btn btn-outline-success btn-sm ms-auto">
+        <i class="bi bi-download me-1"></i>CSV 다운로드
+      </a>
+    </div>
+
+    <!-- 필터 폼 -->
+    <form method="GET" class="row g-2 mb-3" id="filterForm">
+      <div class="col-md-4">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="search" class="form-control" placeholder="계정명 검색" value="{{ search }}">
+        </div>
+      </div>
+      <div class="col-md-2">
+        <select name="sort" class="form-select">
+          <option value="newest" {% if sort=='newest' %}selected{% endif %}>최신 팔로우 순</option>
+          <option value="oldest" {% if sort=='oldest' %}selected{% endif %}>오래된 순</option>
+          <option value="username" {% if sort=='username' %}selected{% endif %}>계정명 순</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="from_date" class="form-control" placeholder="시작일" value="{{ from_date }}">
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="to_date" class="form-control" placeholder="종료일" value="{{ to_date }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-ig w-100">필터 적용</button>
+      </div>
+    </form>
+
+    <!-- 테이블 -->
+    {% if data.followers %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>계정명</th>
+            <th>팔로우 날짜</th>
+            <th>프로필</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in data.followers %}
+          <tr>
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td>
+              <a href="{{ f.profile_url }}" target="_blank" class="text-decoration-none fw-semibold">
+                @{{ f.username }}
+              </a>
+            </td>
+            <td class="text-muted small">{{ f.followed_at }}</td>
+            <td>
+              <a href="{{ f.profile_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox display-4 d-block mb-2"></i>
+      {% if search %}검색 결과가 없습니다.{% else %}팔로워 데이터가 없습니다. <a href="{{ url_for('index') }}">파일을 업로드</a>해주세요.{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

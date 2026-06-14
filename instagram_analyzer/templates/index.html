@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}홈 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <!-- 헤더 -->
+    <div class="text-center mb-5">
+      <div class="ig-logo-circle mx-auto mb-3">
+        <i class="bi bi-camera2" style="font-size:2.5rem;color:#fff;"></i>
+      </div>
+      <h1 class="fw-bold">Instagram Analyzer</h1>
+      <p class="text-muted">인스타그램 데이터 내보내기 파일을 업로드하면 팔로워·언팔·활동 이력을 분석합니다.</p>
+    </div>
+
+    <!-- 현재 데이터 현황 -->
+    {% if has_data %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3"><i class="bi bi-bar-chart-line me-2 text-ig-pink"></i>현재 데이터 현황</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3">
+            <div class="stat-card text-center p-3 rounded">
+              <div class="stat-number">{{ stats.followers_count }}</div>
+              <div class="stat-label">팔로워</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card text-center p-3 rounded">
+              <div class="stat-number">{{ stats.following_count }}</div>
+              <div class="stat-label">팔로잉</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card text-center p-3 rounded">
+              <div class="stat-number">{{ stats.mutual_count }}</div>
+              <div class="stat-label">맞팔</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card text-center p-3 rounded">
+              <div class="stat-number text-warning">{{ stats.not_following_back }}</div>
+              <div class="stat-label">맞팔 안 됨</div>
+            </div>
+          </div>
+        </div>
+
+        <h6 class="mb-2 text-muted small">업로드된 파일</h6>
+        <div class="row g-2">
+          {% for filename, exists in summary.items() %}
+          <div class="col-auto">
+            <span class="badge rounded-pill {% if exists %}bg-success{% else %}bg-secondary{% endif %}">
+              <i class="bi {% if exists %}bi-check-circle{% else %}bi-dash-circle{% endif %} me-1"></i>
+              {{ filename }}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+          <a href="{{ url_for('followers.followers_page') }}" class="btn btn-ig btn-sm">
+            <i class="bi bi-people me-1"></i>팔로워 목록 보기
+          </a>
+          <a href="{{ url_for('followers.unfollowers_page') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-person-dash me-1"></i>언팔 분석
+          </a>
+          <form action="{{ url_for('delete_data') }}" method="POST" class="ms-auto"
+                onsubmit="return confirm('업로드된 데이터를 모두 삭제할까요?')">
+            <button class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-trash me-1"></i>데이터 삭제
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 파일 업로드 -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">
+          <i class="bi bi-cloud-upload me-2 text-ig-purple"></i>
+          {% if has_data %}데이터 추가 업로드{% else %}데이터 업로드{% endif %}
+        </h5>
+
+        <div class="alert alert-info small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          <strong>데이터 준비 방법:</strong>
+          인스타그램 앱 → 설정 → 계정 센터 → 내 정보 및 권한 → 정보 다운로드 → <strong>JSON 형식</strong>으로 요청 (1~3일 소요)
+        </div>
+
+        <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+          <div class="upload-zone" id="dropZone">
+            <i class="bi bi-file-earmark-zip display-4 text-ig-pink mb-3"></i>
+            <p class="mb-1 fw-semibold">ZIP 파일 또는 JSON 파일을 드래그&드롭</p>
+            <p class="text-muted small mb-3">또는 클릭하여 파일 선택</p>
+            <input type="file" name="files" id="fileInput" multiple accept=".json,.zip" class="d-none">
+            <button type="button" class="btn btn-ig" onclick="document.getElementById('fileInput').click()">
+              <i class="bi bi-folder2-open me-1"></i>파일 선택
+            </button>
+            <div id="fileList" class="mt-3 small text-muted"></div>
+          </div>
+
+          <div class="progress mt-3 d-none" id="uploadProgress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-ig" style="width:100%"></div>
+          </div>
+
+          <button type="submit" class="btn btn-ig mt-3 w-100" id="uploadBtn" disabled>
+            <i class="bi bi-upload me-1"></i>업로드 및 분석 시작
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 분석 가능 항목 안내 -->
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-people-fill me-2 text-ig-pink"></i>팔로워 목록 (F-01)</h6>
+            <p class="small text-muted mb-0">나를 팔로우하는 계정 목록과 팔로우 날짜를 조회합니다. 검색·정렬·날짜 필터 지원.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-person-x-fill me-2 text-ig-purple"></i>언팔 감지 (F-02)</h6>
+            <p class="small text-muted mb-0">맞팔 안 된 계정, 나만 팔로우하는 계정을 교차 분석합니다.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-heart-fill me-2 text-danger"></i>활동 검색 — 발신 (F-04)</h6>
+            <p class="small text-muted mb-0">내가 특정 계정에 남긴 좋아요·댓글 이력을 타임라인으로 조회합니다.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-download me-2 text-success"></i>CSV 내보내기</h6>
+            <p class="small text-muted mb-0">모든 분석 결과를 CSV로 다운로드할 수 있습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

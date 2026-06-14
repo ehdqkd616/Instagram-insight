@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}언팔 분석 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<!-- 통계 카드 -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.followers_count }}</div>
+      <div class="stat-label">팔로워</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.following_count }}</div>
+      <div class="stat-label">팔로잉</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number text-warning">{{ stats.not_following_back }}</div>
+      <div class="stat-label">맞팔 안 됨</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center p-3 rounded shadow-sm">
+      <div class="stat-number">{{ stats.only_following_me }}</div>
+      <div class="stat-label">나만 팔로우</div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <h5 class="mb-3"><i class="bi bi-person-dash me-2 text-ig-purple"></i>언팔 분석</h5>
+
+    <!-- 탭 -->
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='not_following_back' %}active{% endif %}"
+           href="{{ url_for('followers.unfollowers_page', tab='not_following_back', search=search) }}">
+          <i class="bi bi-person-x me-1"></i>맞팔 안 됨
+          {% if tab=='not_following_back' %}<span class="badge bg-warning text-dark ms-1">{{ data.total }}</span>{% endif %}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='only_following_me' %}active{% endif %}"
+           href="{{ url_for('followers.unfollowers_page', tab='only_following_me', search=search) }}">
+          <i class="bi bi-person-heart me-1"></i>나만 팔로우
+          {% if tab=='only_following_me' %}<span class="badge bg-info text-dark ms-1">{{ data.total }}</span>{% endif %}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='mutual' %}active{% endif %}"
+           href="{{ url_for('followers.unfollowers_page', tab='mutual', search=search) }}">
+          <i class="bi bi-people me-1"></i>맞팔
+          {% if tab=='mutual' %}<span class="badge bg-success ms-1">{{ data.total }}</span>{% endif %}
+        </a>
+      </li>
+    </ul>
+
+    <!-- 탭 설명 -->
+    <div class="alert alert-light border small mb-3">
+      {% if tab == 'not_following_back' %}
+        <i class="bi bi-info-circle me-1"></i>
+        내가 팔로우하고 있지만, 상대방은 나를 팔로우하지 않는 계정 목록입니다.
+      {% elif tab == 'only_following_me' %}
+        <i class="bi bi-info-circle me-1"></i>
+        나를 팔로우하고 있지만, 내가 팔로우하지 않는 계정 목록입니다.
+      {% else %}
+        <i class="bi bi-info-circle me-1"></i>
+        서로 팔로우하는 맞팔 계정 목록입니다.
+      {% endif %}
+    </div>
+
+    <!-- 검색 + CSV -->
+    <form method="GET" class="row g-2 mb-3">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="search" class="form-control" placeholder="계정명 검색" value="{{ search }}">
+        </div>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-ig">검색</button>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('followers.export_csv', type=tab) }}" class="btn btn-outline-success">
+          <i class="bi bi-download me-1"></i>CSV
+        </a>
+      </div>
+    </form>
+
+    <!-- 목록 테이블 -->
+    {% set items = data.accounts if data.accounts is defined else data.followers %}
+    {% if items %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>계정명</th>
+            <th>날짜</th>
+            <th>프로필</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in items %}
+          <tr>
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td>
+              <a href="{{ f.profile_url }}" target="_blank" class="text-decoration-none fw-semibold">
+                @{{ f.username }}
+              </a>
+            </td>
+            <td class="text-muted small">{{ f.followed_at }}</td>
+            <td>
+              <a href="{{ f.profile_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-check-circle display-4 d-block mb-2 text-success"></i>
+      {% if search %}검색 결과가 없습니다.{% else %}해당하는 계정이 없습니다.{% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
