@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}관리자 페이지 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <h5 class="mb-0"><i class="bi bi-shield-lock me-2 text-ig-purple"></i>관리자 페이지</h5>
+  <span class="badge bg-danger ms-2">Admin</span>
+</div>
+
+<!-- 시스템 통계 카드 -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-ig-purple">{{ stats.total_users }}</div>
+      <div class="small text-muted">전체 사용자</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-success">{{ stats.total_uploads }}</div>
+      <div class="small text-muted">총 업로드 횟수</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-primary">{{ stats.total_dm | format_number if stats.total_dm > 9999 else stats.total_dm }}</div>
+      <div class="small text-muted">총 DM 기록</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-danger">{{ stats.total_unfollowers }}</div>
+      <div class="small text-muted">감지된 언팔로워</div>
+    </div>
+  </div>
+</div>
+
+<!-- 사용자 목록 -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+    <span class="fw-semibold"><i class="bi bi-people me-2"></i>사용자 관리</span>
+    <button class="btn btn-ig btn-sm" data-bs-toggle="modal" data-bs-target="#createUserModal">
+      <i class="bi bi-person-plus me-1"></i>새 사용자 추가
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">ID</th>
+            <th>아이디</th>
+            <th>표시 이름</th>
+            <th>인스타그램</th>
+            <th>권한</th>
+            <th>업로드</th>
+            <th>DM</th>
+            <th>가입일</th>
+            <th class="pe-3">관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td class="ps-3 text-muted small">{{ u.id }}</td>
+            <td>
+              <span class="fw-semibold">{{ u.username }}</span>
+              {% if u.id == current_user.id %}
+                <span class="badge bg-secondary ms-1 small">나</span>
+              {% endif %}
+            </td>
+            <td>{{ u.display_name or '—' }}</td>
+            <td>
+              {% if u.instagram_username %}
+                <span class="small"><i class="bi bi-instagram me-1 text-ig-pink"></i>{{ u.instagram_username }}</span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if u.is_admin %}
+                <span class="badge bg-danger">관리자</span>
+              {% else %}
+                <span class="badge bg-light text-muted border">일반</span>
+              {% endif %}
+            </td>
+            <td class="text-center">{{ u.upload_count }}</td>
+            <td class="text-center">
+              {% if u.dm_count > 0 %}
+                <span class="small">{{ "{:,}".format(u.dm_count) }}</span>
+              {% else %}
+                <span class="text-muted small">0</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted text-nowrap">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+            <td class="pe-3">
+              <div class="d-flex gap-1">
+                <a href="{{ url_for('admin.edit_user', user_id=u.id) }}"
+                   class="btn btn-outline-primary btn-sm" title="수정">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% if u.id != current_user.id %}
+                <button class="btn btn-outline-danger btn-sm" title="삭제"
+                        onclick="confirmDelete({{ u.id }}, '{{ u.username }}')">
+                  <i class="bi bi-trash"></i>
+                </button>
+                {% else %}
+                <button class="btn btn-outline-secondary btn-sm" disabled title="자기 자신은 삭제 불가">
+                  <i class="bi bi-trash"></i>
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">사용자가 없습니다.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 새 사용자 추가 모달 -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('admin.create_user_action') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>새 사용자 추가</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">아이디 <span class="text-danger">*</span></label>
+            <input type="text" name="username" class="form-control" required minlength="3"
+                   placeholder="영문, 숫자, 언더스코어">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">표시 이름</label>
+            <input type="text" name="display_name" class="form-control" placeholder="선택 사항">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">비밀번호 <span class="text-danger">*</span></label>
+            <input type="password" name="password" class="form-control" required minlength="6">
+            <div class="form-text">6자 이상</div>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" name="is_admin" id="newIsAdmin">
+            <label class="form-check-label" for="newIsAdmin">관리자 권한 부여</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-ig"><i class="bi bi-person-plus me-1"></i>생성</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-1"></i>사용자 삭제</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p class="small mb-1"><strong id="deleteTargetName"></strong> 계정을 삭제하면</p>
+        <p class="small text-danger mb-0">팔로워 스냅샷, DM 기록, 업로드 히스토리 등 <strong>모든 데이터가 영구 삭제</strong>됩니다.</p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <form id="deleteForm" method="POST">
+          <button type="submit" class="btn btn-danger btn-sm">삭제</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(userId, username) {
+  document.getElementById('deleteTargetName').textContent = username;
+  document.getElementById('deleteForm').action = '/admin/users/' + userId + '/delete';
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

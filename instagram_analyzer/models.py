@@ -14,12 +14,13 @@ logger = logging.getLogger("instagram_analyzer.models")
 
 class User(UserMixin):
     def __init__(self, id: int, username: str, password_hash: str,
-                 display_name: str = "", instagram_username: str = ""):
+                 display_name: str = "", instagram_username: str = "", is_admin: int = 0):
         self.id = id
         self.username = username
         self.password_hash = password_hash
         self.display_name = display_name or username
         self.instagram_username = instagram_username
+        self.is_admin = bool(is_admin)
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
@@ -53,9 +54,21 @@ def init_db():
                 password_hash      TEXT    NOT NULL,
                 display_name       TEXT    DEFAULT '',
                 instagram_username TEXT    DEFAULT '',
+                is_admin           INTEGER NOT NULL DEFAULT 0,
                 created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # 기존 DB에 is_admin 컬럼이 없으면 추가 (마이그레이션)
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+            logger.info("users 테이블에 is_admin 컬럼 추가됨 (마이그레이션)")
+        except sqlite3.OperationalError:
+            pass  # 이미 존재
+        # 관리자가 없으면 최초 가입 사용자에게 자동 부여
+        admin_count = conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+        if admin_count == 0:
+            conn.execute("UPDATE users SET is_admin=1 WHERE id=(SELECT MIN(id) FROM users)")
+            logger.info("관리자 없음 → 최초 사용자에게 관리자 권한 자동 부여")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS follower_snapshots (
                 user_id     INTEGER NOT NULL,
@@ -139,7 +152,7 @@ def create_user(username: str, password: str, display_name: str = "") -> "User |
 def find_user_by_username(username: str) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin "
             "FROM users WHERE username = ?",
             (username.strip(),),
         ).fetchone()
@@ -151,7 +164,7 @@ def find_user_by_username(username: str) -> "User | None":
 def find_user_by_id(user_id: int) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin "
             "FROM users WHERE id = ?",
             (int(user_id),),
         ).fetchone()
@@ -173,7 +186,7 @@ def update_instagram_username(user_id: int, ig_username: str):
 def list_users() -> list[User]:
     with _get_db() as conn:
         rows = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username FROM users"
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin FROM users"
         ).fetchall()
     return [User(*r) for r in rows]
 
@@ -396,3 +409,76 @@ def delete_upload_history_entry(user_id: int, entry_id: int):
             (int(user_id), int(entry_id))
         )
     logger.info("업로드 히스토리 삭제: user_id=%d, id=%d", user_id, entry_id)
+
+
+# ── 관리자 전용 ───────────────────────────────────────────────────────────────
+
+def admin_get_all_users() -> list:
+    """전체 사용자 목록 + 통계 (관리자용)."""
+    with _get_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                u.id, u.username, u.display_name, u.instagram_username,
+                u.is_admin, u.created_at,
+                (SELECT COUNT(*) FROM upload_history  WHERE user_id = u.id) AS upload_count,
+                (SELECT COUNT(*) FROM dm_activity      WHERE user_id = u.id) AS dm_count,
+                (SELECT COUNT(*) FROM follower_snapshots WHERE user_id = u.id) AS snapshot_count,
+                (SELECT COUNT(*) FROM unfollower_events  WHERE user_id = u.id) AS unfollower_count
+            FROM users u ORDER BY u.id
+        """).fetchall()
+    return [dict(r) for r in rows]
+
+
+def admin_update_user(user_id: int, display_name: str = None,
+                      is_admin: bool = None, new_password: str = None):
+    """사용자 정보 수정 (관리자용)."""
+    fields, params = [], []
+    if display_name is not None:
+        fields.append("display_name=?")
+        params.append(display_name)
+    if is_admin is not None:
+        fields.append("is_admin=?")
+        params.append(1 if is_admin else 0)
+    if new_password:
+        fields.append("password_hash=?")
+        params.append(generate_password_hash(new_password))
+    if not fields:
+        return
+    params.append(int(user_id))
+    with _get_db() as conn:
+        conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id=?", params)
+    logger.info("관리자가 사용자 수정: user_id=%d fields=%s", user_id, fields)
+
+
+def admin_delete_user(user_id: int):
+    """사용자 및 모든 관련 데이터 삭제 (관리자용)."""
+    uid = int(user_id)
+    with _get_db() as conn:
+        for table in ("dm_activity", "follower_snapshots", "unfollower_events",
+                      "upload_history", "user_settings"):
+            conn.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    data_dir = os.path.join(DATA_DIR, str(uid))
+    if os.path.exists(data_dir):
+        import shutil
+        shutil.rmtree(data_dir)
+    logger.info("사용자 삭제 완료: user_id=%d", uid)
+
+
+def get_system_stats() -> dict:
+    """시스템 전체 통계 (관리자용)."""
+    with _get_db() as conn:
+        total_users      = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        admin_users      = conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+        total_uploads    = conn.execute("SELECT COUNT(*) FROM upload_history").fetchone()[0]
+        total_dm         = conn.execute("SELECT COUNT(*) FROM dm_activity").fetchone()[0]
+        total_unfollowers = conn.execute("SELECT COUNT(*) FROM unfollower_events").fetchone()[0]
+        total_snapshots  = conn.execute("SELECT COUNT(*) FROM follower_snapshots").fetchone()[0]
+    return {
+        "total_users": total_users,
+        "admin_users": admin_users,
+        "total_uploads": total_uploads,
+        "total_dm": total_dm,
+        "total_unfollowers": total_unfollowers,
+        "total_snapshots": total_snapshots,
+    }

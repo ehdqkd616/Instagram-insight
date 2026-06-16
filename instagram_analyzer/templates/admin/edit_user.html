@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}사용자 수정 &mdash; Instagram Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h5 class="mb-0"><i class="bi bi-person-gear me-2 text-ig-purple"></i>사용자 수정</h5>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center mb-4 gap-3">
+          <span class="user-avatar fs-4" style="width:48px;height:48px;line-height:48px;font-size:20px!important">
+            {{ target.display_name[0].upper() if target.display_name else target.username[0].upper() }}
+          </span>
+          <div>
+            <div class="fw-bold">{{ target.username }}</div>
+            <div class="small text-muted">ID: {{ target.id }}
+              {% if target.is_admin %}<span class="badge bg-danger ms-1">관리자</span>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">표시 이름</label>
+            <input type="text" name="display_name" class="form-control"
+                   value="{{ target.display_name or '' }}" placeholder="{{ target.username }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">새 비밀번호</label>
+            <input type="password" name="new_password" class="form-control"
+                   placeholder="변경 시에만 입력 (6자 이상)">
+            <div class="form-text">비워두면 기존 비밀번호 유지</div>
+          </div>
+
+          <div class="mb-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="is_admin"
+                     id="isAdmin" {{ 'checked' if target.is_admin }}>
+              <label class="form-check-label fw-semibold" for="isAdmin">
+                관리자 권한
+              </label>
+            </div>
+            <div class="form-text text-danger">관리자는 이 페이지에 접근하고 모든 계정을 관리할 수 있습니다.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-ig flex-grow-1">
+              <i class="bi bi-check2 me-1"></i>저장
+            </button>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">취소</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -49,10 +49,12 @@ def create_app():
     from routes.followers import bp as followers_bp
     from routes.activity import bp as activity_bp
     from routes.history import bp as history_bp
+    from routes.admin import bp as admin_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(followers_bp)
     app.register_blueprint(activity_bp)
     app.register_blueprint(history_bp)
+    app.register_blueprint(admin_bp)
 
     # ── 요청/응답 로깅 미들웨어 ──────────────────────────
     @app.before_request
@@ -74,6 +76,10 @@ def create_app():
         logger.warning("413 Request Entity Too Large: %s", request.path)
         flash("파일이 너무 큽니다.", "danger")
         return redirect(url_for("index"))
+
+    @app.errorhandler(403)
+    def handle_403(_e):
+        return render_template("error.html", code=403, msg="접근 권한이 없습니다."), 403
 
     @app.errorhandler(404)
     def handle_404(_e):
