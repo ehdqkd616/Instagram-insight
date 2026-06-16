@@ -83,9 +83,16 @@
           <tr>
             <td class="text-muted small">{{ loop.index }}</td>
             <td>
-              <a href="{{ f.profile_url }}" target="_blank" class="text-decoration-none fw-semibold">
-                @{{ f.username }}
-              </a>
+              <div class="d-flex align-items-center gap-2">
+                <img class="ig-avatar"
+                     src="{{ url_for('proxy_avatar', username=f.username) }}"
+                     loading="lazy" alt="{{ f.username }}"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                <span class="ig-avatar-initials" data-username="{{ f.username }}" style="display:none;">{{ f.username[0] }}</span>
+                <a href="{{ f.profile_url }}" target="_blank" class="text-decoration-none fw-semibold">
+                  @{{ f.username }}
+                </a>
+              </div>
             </td>
             <td class="text-muted small">{{ f.followed_at }}</td>
             <td>

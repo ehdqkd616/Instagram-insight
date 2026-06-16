@@ -1,20 +1,24 @@
 import glob
 import logging
 import os
+import re
 import time
 
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, flash, jsonify, send_file,
+    url_for, flash, jsonify, send_file, Response,
 )
 from flask_login import LoginManager, login_required, current_user
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
+# ── 아바타 캐시 ─────────────────────────────────────────
+_avatar_cache: dict[str, str] = {}
+
 from config import BASE_DIR, DATA_DIR, UPLOAD_FOLDER, ALLOWED_EXTENSIONS, get_secret_key
 from logging_config import setup_logging, read_recent_logs
 from models import init_db, find_user_by_id, update_instagram_username
-from services.parser import extract_zip, get_data_summary
+from services.parser import extract_zip, get_data_summary, detect_dm_my_name, parse_dm_from_zip
 from services.follower_service import get_stats
 
 logger = logging.getLogger("instagram_analyzer.app")
@@ -44,9 +48,11 @@ def create_app():
     from routes.auth import bp as auth_bp
     from routes.followers import bp as followers_bp
     from routes.activity import bp as activity_bp
+    from routes.history import bp as history_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(followers_bp)
     app.register_blueprint(activity_bp)
+    app.register_blueprint(history_bp)
 
     # ── 요청/응답 로깅 미들웨어 ──────────────────────────
     @app.before_request
@@ -84,7 +90,7 @@ def create_app():
     def index():
         summary = get_data_summary(current_user.data_dir)
         has_data = any(summary.values())
-        stats = get_stats(current_user.data_dir) if has_data else None
+        stats = get_stats(current_user.data_dir, current_user.id) if has_data else None
         return render_template("index.html", summary=summary, has_data=has_data, stats=stats)
 
     @app.route("/upload", methods=["POST"])
@@ -119,18 +125,62 @@ def create_app():
                 try:
                     logger.info("[user=%d] ZIP 압축 해제 시작: %s", current_user.id, filename)
                     found = extract_zip(save_path, user_data_dir)
-                    os.remove(save_path)
                     logger.info("[user=%d] ZIP 완료 — 추출 파일: %s", current_user.id, list(found.keys()))
                     uploaded.extend(found.keys())
+
+                    # DM 파싱 (ZIP 삭제 전에 수행)
+                    try:
+                        my_name = detect_dm_my_name(save_path)
+                        if my_name:
+                            from models import store_dm_activity, set_user_setting
+                            set_user_setting(current_user.id, "dm_display_name", my_name)
+                            dm_acts = parse_dm_from_zip(save_path, my_name)
+                            if dm_acts:
+                                store_dm_activity(current_user.id, dm_acts)
+                                flash(f"DM 활동 {len(dm_acts):,}건 로드됨.", "info")
+                                logger.info("[user=%d] DM 파싱 완료: %d건 (my_name=%r)",
+                                            current_user.id, len(dm_acts), my_name)
+                    except Exception as e:
+                        logger.error("[user=%d] DM 파싱 실패: %s", current_user.id, e, exc_info=True)
+
+                    os.remove(save_path)
                 except Exception as e:
                     logger.error("[user=%d] ZIP 해제 실패: %s", current_user.id, e, exc_info=True)
                     flash(f"ZIP 해제 실패: {e}", "danger")
             else:
                 uploaded.append(filename)
 
-        # 업로드된 데이터에서 인스타그램 계정명 자동 감지
+        # 업로드된 데이터에서 인스타그램 계정명 자동 감지 및 팔로워 스냅샷 처리
         if uploaded:
             _detect_instagram_username(user_data_dir)
+
+            # 팔로워 파일이 포함된 경우 스냅샷 비교로 언팔로워 감지
+            new_unfollowers_count = 0
+            if any("follower" in u.lower() for u in uploaded):
+                try:
+                    from services.parser import parse_followers
+                    from models import process_follower_snapshot, has_follower_snapshot
+                    followers = parse_followers(user_data_dir)
+                    if followers:
+                        had_prev = has_follower_snapshot(current_user.id)
+                        new_unfollowers_count = process_follower_snapshot(current_user.id, followers)
+                        if had_prev and new_unfollowers_count > 0:
+                            flash(
+                                f"언팔로워 {new_unfollowers_count}명 감지됐습니다! "
+                                "언팔 분석 > 언팔로워 탭에서 확인하세요.",
+                                "warning"
+                            )
+                except Exception as e:
+                    logger.error("[user=%d] 팔로워 스냅샷 처리 실패: %s", current_user.id, e, exc_info=True)
+
+            # 업로드 히스토리 기록 (시점별 통계 스냅샷 — 추세 비교용)
+            try:
+                from models import record_upload_snapshot
+                current_stats = get_stats(user_data_dir, current_user.id)
+                record_upload_snapshot(current_user.id, current_stats, uploaded, new_unfollowers_count)
+            except Exception as e:
+                logger.error("[user=%d] 업로드 히스토리 기록 실패: %s", current_user.id, e, exc_info=True)
+
             flash(f"업로드 완료: {', '.join(uploaded)}", "success")
             logger.info("[user=%d] 업로드 완료: %s", current_user.id, uploaded)
 
@@ -175,6 +225,37 @@ def create_app():
     @login_required
     def api_data_summary():
         return jsonify(get_data_summary(current_user.data_dir))
+
+    # ── 아바타 (서버 측 SVG 이니셜 생성) ────────────────
+    _ig_palette = [
+        "#E1306C", "#833AB4", "#F77737", "#405de6",
+        "#5851db", "#fd1d1d", "#00b09b", "#0095f6",
+    ]
+
+    @app.route("/avatar/<username>")
+    @login_required
+    def proxy_avatar(username):
+        username = re.sub(r"[^a-zA-Z0-9._]", "", username)[:30]
+        if not username:
+            return "", 400
+        if username not in _avatar_cache:
+            h = 0
+            for c in username:
+                h = ord(c) + ((h << 5) - h)
+            _avatar_cache[username] = _ig_palette[abs(h) % len(_ig_palette)]
+        color = _avatar_cache[username]
+        initial = username[0].upper()
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">'
+            f'<circle cx="20" cy="20" r="20" fill="{color}"/>'
+            f'<text x="20" y="26" text-anchor="middle" '
+            'font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="white">'
+            f'{initial}'
+            '</text>'
+            '</svg>'
+        )
+        return Response(svg, mimetype="image/svg+xml",
+                        headers={"Cache-Control": "public, max-age=86400"})
 
     return app
 

@@ -9,6 +9,8 @@ from services.follower_service import (
     get_only_following_me,
     get_mutual,
     get_stats,
+    get_unfollower_history,
+    get_recently_unfollowed,
 )
 
 bp = Blueprint("followers", __name__)
@@ -49,12 +51,16 @@ def following_page():
 def unfollowers_page():
     tab    = request.args.get("tab", "not_following_back")
     search = request.args.get("search", "")
-    stats  = get_stats(_data_dir())
+    stats  = get_stats(_data_dir(), current_user.id)
 
     if tab == "not_following_back":
         data = get_not_following_back(_data_dir(), search)
     elif tab == "only_following_me":
         data = get_only_following_me(_data_dir(), search)
+    elif tab == "unfollower_events":
+        data = get_unfollower_history(current_user.id, search)
+    elif tab == "recently_unfollowed":
+        data = get_recently_unfollowed(_data_dir(), search)
     else:
         data = get_mutual(_data_dir(), search)
 
@@ -92,6 +98,10 @@ def api_unfollowers():
         return jsonify(get_not_following_back(_data_dir(), search))
     elif tab == "only_following_me":
         return jsonify(get_only_following_me(_data_dir(), search))
+    elif tab == "unfollower_events":
+        return jsonify(get_unfollower_history(current_user.id, search))
+    elif tab == "recently_unfollowed":
+        return jsonify(get_recently_unfollowed(_data_dir(), search))
     return jsonify(get_mutual(_data_dir(), search))
 
 

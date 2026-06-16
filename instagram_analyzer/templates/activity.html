@@ -9,25 +9,51 @@
     <form method="GET" id="activityForm">
       <div class="row g-2 mb-3">
         <div class="col-md-4">
-          <label class="form-label small fw-semibold">계정명</label>
+          <label class="form-label small fw-semibold">
+            {% if direction == 'dm' %}대화 상대 (DM 표시 이름, 선택){% else %}계정명{% endif %}
+          </label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-at"></i></span>
-            <input type="text" name="username" class="form-control" placeholder="username" value="{{ username }}" required>
+            <input type="text" name="username" class="form-control" id="usernameInput"
+                   list="{% if direction == 'dm' %}dmPartnerList{% endif %}"
+                   placeholder="{% if direction == 'dm' %}DM 표시 이름 입력 (빈칸=전체 DM){% else %}username{% endif %}"
+                   value="{{ username }}"
+                   {% if direction != 'dm' %}required{% endif %}>
           </div>
+          {% if direction == 'dm' %}
+          <datalist id="dmPartnerList">
+            {% for p in dm_partners %}
+            <option value="{{ p.other_party }}">{{ p.other_party }} ({{ p.cnt }}건)</option>
+            {% endfor %}
+          </datalist>
+          <div class="form-text">
+            <i class="bi bi-info-circle"></i>
+            DM 대화창에 표시되는 이름이며 @계정명과 다를 수 있습니다. 입력 시 자동완성 목록이 표시됩니다.
+          </div>
+          {% endif %}
         </div>
         <div class="col-md-2">
           <label class="form-label small fw-semibold">방향</label>
-          <select name="direction" class="form-select">
-            <option value="sent" {% if direction=='sent' %}selected{% endif %}>내가 보낸 활동</option>
+          <select name="direction" class="form-select" id="directionSelect" onchange="onDirectionChange(this)">
+            <option value="sent"     {% if direction=='sent' %}selected{% endif %}>내가 보낸 활동</option>
             <option value="received" {% if direction=='received' %}selected{% endif %}>받은 활동</option>
+            <option value="dm"       {% if direction=='dm' %}selected{% endif %}>📩 DM 활동</option>
           </select>
         </div>
         <div class="col-md-2">
           <label class="form-label small fw-semibold">활동 유형</label>
-          <select name="activity_type" class="form-select">
-            <option value="all" {% if activity_type=='all' %}selected{% endif %}>전체</option>
-            <option value="like" {% if activity_type=='like' %}selected{% endif %}>좋아요만</option>
+          <select name="activity_type" class="form-select" id="typeSelect">
+            {% if direction == 'dm' %}
+            <option value="dm_all"      {% if activity_type=='dm_all' %}selected{% endif %}>전체 DM</option>
+            <option value="dm_share"    {% if activity_type=='dm_share' %}selected{% endif %}>공유</option>
+            <option value="dm_reaction" {% if activity_type=='dm_reaction' %}selected{% endif %}>이모지 반응</option>
+            <option value="dm_liked"    {% if activity_type=='dm_liked' %}selected{% endif %}>메시지 좋아요</option>
+            <option value="dm_message"  {% if activity_type=='dm_message' %}selected{% endif %}>메시지</option>
+            {% else %}
+            <option value="all"     {% if activity_type=='all' %}selected{% endif %}>전체</option>
+            <option value="like"    {% if activity_type=='like' %}selected{% endif %}>좋아요만</option>
             <option value="comment" {% if activity_type=='comment' %}selected{% endif %}>댓글만</option>
+            {% endif %}
           </select>
         </div>
         <div class="col-md-2">
@@ -53,12 +79,28 @@
   </div>
   {% endif %}
 
-  <div class="d-flex align-items-center mb-3">
+  {% if data.is_dm and data.total_stored == 0 %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    아직 DM 데이터가 로드되지 않았습니다.
+    <strong>홈 화면에서 인스타그램 ZIP 파일을 다시 업로드</strong>하면 DM 활동이 자동으로 로드됩니다.
+  </div>
+  {% else %}
+
+  <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
     <h6 class="mb-0">
-      <strong>@{{ data.username }}</strong>
-      {% if direction == 'sent' %}에게 보낸{% else %}으로부터 받은{% endif %} 활동
+      {% if data.is_dm %}
+        <i class="bi bi-envelope-fill me-1 text-ig-pink"></i>
+        {% if data.username == '전체 DM' %}전체 DM 활동{% else %}<strong>{{ data.username }}</strong>과의 DM{% endif %}
+      {% else %}
+        <strong>@{{ data.username }}</strong>
+        {% if direction == 'sent' %}에게 보낸{% else %}으로부터 받은{% endif %} 활동
+      {% endif %}
     </h6>
-    <span class="badge bg-secondary ms-2">총 {{ data.total }}건</span>
+    <span class="badge bg-secondary">총 {{ data.total }}건</span>
+    {% if data.is_dm and data.total_stored %}
+    <span class="badge bg-light text-muted border">전체 저장: {{ data.total_stored }}건</span>
+    {% endif %}
     {% if data.activities %}
     <a href="{{ url_for('activity.export_activity_csv', username=username, direction=direction, activity_type=activity_type) }}"
        class="btn btn-outline-success btn-sm ms-auto">
@@ -70,37 +112,59 @@
   {% if data.activities %}
   <div class="activity-feed">
     {% for act in data.activities %}
-    <div class="activity-card card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <div class="d-flex align-items-start">
-          <div class="activity-icon me-3">
+    <div class="activity-card card border-0 shadow-sm mb-2">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-start gap-3">
+          <!-- 아이콘 -->
+          <div class="activity-icon flex-shrink-0 pt-1">
             {% if act.type == 'like' %}
-              <span class="badge bg-danger fs-5 p-2"><i class="bi bi-heart-fill"></i></span>
+              <span class="badge bg-danger p-2"><i class="bi bi-heart-fill"></i></span>
             {% elif act.type == 'like_comment' %}
-              <span class="badge bg-warning text-dark fs-5 p-2"><i class="bi bi-hand-thumbs-up-fill"></i></span>
-            {% else %}
-              <span class="badge bg-primary fs-5 p-2"><i class="bi bi-chat-fill"></i></span>
+              <span class="badge bg-warning text-dark p-2"><i class="bi bi-hand-thumbs-up-fill"></i></span>
+            {% elif act.type == 'comment' %}
+              <span class="badge bg-primary p-2"><i class="bi bi-chat-fill"></i></span>
+            {% elif act.type == 'dm_share' %}
+              <span class="badge bg-success p-2"><i class="bi bi-share-fill"></i></span>
+            {% elif act.type == 'dm_reaction' %}
+              <span class="badge bg-warning text-dark p-2" style="font-size:1rem;">{{ act.content }}</span>
+            {% elif act.type == 'dm_liked' %}
+              <span class="badge bg-danger p-2"><i class="bi bi-heart-fill"></i></span>
+            {% elif act.type == 'dm_message' %}
+              <span class="badge bg-info text-dark p-2"><i class="bi bi-chat-dots-fill"></i></span>
             {% endif %}
           </div>
-          <div class="flex-grow-1">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="fw-semibold">
-                {% if act.type == 'like' %}좋아요
-                {% elif act.type == 'like_comment' %}댓글 좋아요
-                {% else %}댓글
+          <!-- 내용 -->
+          <div class="flex-grow-1 min-w-0">
+            <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+              <span class="fw-semibold small">
+                {% if act.type == 'like' %}
+                  좋아요 &mdash; <a href="{{ url_for('activity.activity_page', username=username, direction=direction) }}" class="text-decoration-none">@{{ data.username }}</a> 의 게시물에
+                {% elif act.type == 'like_comment' %}
+                  댓글 좋아요 &mdash; @{{ data.username }} 의 댓글에
+                {% elif act.type == 'comment' %}
+                  댓글 &mdash; <a href="{{ url_for('activity.activity_page', username=username, direction=direction) }}" class="text-decoration-none">@{{ data.username }}</a> 의 게시물에
+                {% elif act.type == 'dm_share' %}
+                  DM 공유 &mdash;
+                  <span class="text-muted">{{ act.other_party }}</span>
+                {% elif act.type == 'dm_reaction' %}
+                  DM 반응 &mdash;
+                  <span class="text-muted">{{ act.other_party }}</span>
+                {% elif act.type == 'dm_liked' %}
+                  메시지 좋아요 &mdash;
+                  <span class="text-muted">{{ act.other_party }}</span>
+                {% elif act.type == 'dm_message' %}
+                  DM &mdash;
+                  <span class="text-muted">{{ act.other_party }}</span>
                 {% endif %}
-                &mdash;
-                <a href="{{ url_for('activity.activity_page', username=username, direction=direction) }}" class="text-decoration-none">@{{ data.username }}</a>
-                {% if direction == 'sent' %}의 게시물에{% else %}이 내 게시물에{% endif %}
               </span>
-              <span class="text-muted small">{{ act.occurred_at }}</span>
+              <span class="text-muted small text-nowrap">{{ act.occurred_at }}</span>
             </div>
-            {% if act.content %}
-            <p class="mb-1 text-muted">"{{ act.content }}"</p>
+            {% if act.type not in ('dm_reaction', 'dm_liked') and act.content %}
+            <p class="mb-1 text-muted small text-truncate" style="max-width:600px;">"{{ act.content }}"</p>
             {% endif %}
             {% if act.post_url %}
             <a href="{{ act.post_url }}" target="_blank" class="small text-ig-pink">
-              <i class="bi bi-box-arrow-up-right me-1"></i>게시물 바로가기
+              <i class="bi bi-box-arrow-up-right me-1"></i>바로가기
             </a>
             {% endif %}
           </div>
@@ -110,18 +174,78 @@
     {% endfor %}
   </div>
 
-  {% elif not data.notice %}
+  {% else %}
   <div class="text-center py-5 text-muted">
     <i class="bi bi-inbox display-4 d-block mb-2"></i>
-    활동 내역이 없습니다.
+    {% if data.is_dm %}
+      <p>"{{ username }}" 와 일치하는 DM 대화가 없습니다.</p>
+      <p class="small">DM 대화 상대 이름은 인스타그램 <strong>표시 이름</strong>이며 @계정명과 다를 수 있습니다.<br>
+      아래 자동완성 목록에서 정확한 이름을 선택해보세요.</p>
+    {% else %}
+      활동 내역이 없습니다.
+    {% endif %}
+  </div>
+  {% if data.is_dm and dm_partners %}
+  <div class="mt-3">
+    <p class="small fw-semibold text-muted mb-2"><i class="bi bi-list-ul me-1"></i>DM 대화가 많은 상대 (상위 {{ dm_partners|length }}명)</p>
+    <div class="d-flex flex-wrap gap-2">
+      {% for p in dm_partners[:30] %}
+      <a href="{{ url_for('activity.activity_page', username=p.other_party, direction='dm', activity_type=activity_type) }}"
+         class="badge bg-light text-dark border text-decoration-none">
+        {{ p.other_party }} <span class="text-muted">({{ p.cnt }})</span>
+      </a>
+      {% endfor %}
+    </div>
   </div>
   {% endif %}
+  {% endif %}
 
+  {% endif %}
+{% elif direction == 'dm' %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-envelope display-4 d-block mb-3 text-ig-pink"></i>
+  <p class="fw-semibold">DM 활동 검색</p>
+  <p class="small">대화 상대 없이 검색하면 전체 DM 기록을 볼 수 있습니다.<br>
+  특정 계정명 입력 시 해당 계정과의 DM만 필터링합니다.</p>
+  <button onclick="document.getElementById('activityForm').submit()" class="btn btn-ig mt-2">
+    <i class="bi bi-search me-1"></i>전체 DM 보기
+  </button>
+</div>
 {% elif username == '' %}
 <div class="text-center py-5 text-muted">
   <i class="bi bi-search display-4 d-block mb-2"></i>
   <p>계정명을 입력하고 검색하세요.</p>
-  <p class="small">내가 좋아요·댓글을 남긴 계정명을 입력하면 활동 이력을 조회합니다.</p>
+  <p class="small">내가 좋아요·댓글을 남긴 계정명을 입력하면 활동 이력을 조회합니다.<br>
+  DM 활동을 보려면 방향을 <strong>📩 DM 활동</strong>으로 선택하세요.</p>
 </div>
 {% endif %}
+
+<script>
+function onDirectionChange(sel) {
+    var isDM = sel.value === 'dm';
+    var typeSelect = document.getElementById('typeSelect');
+    var usernameInput = document.querySelector('input[name="username"]');
+
+    // 활동 유형 옵션 교체
+    if (isDM) {
+        typeSelect.innerHTML =
+            '<option value="dm_all">전체 DM</option>' +
+            '<option value="dm_share">공유</option>' +
+            '<option value="dm_reaction">이모지 반응</option>' +
+            '<option value="dm_liked">메시지 좋아요</option>' +
+            '<option value="dm_message">메시지</option>';
+        usernameInput.placeholder = 'DM 표시 이름 입력 (빈칸=전체 DM)';
+        usernameInput.removeAttribute('required');
+        usernameInput.setAttribute('list', 'dmPartnerList');
+    } else {
+        typeSelect.innerHTML =
+            '<option value="all">전체</option>' +
+            '<option value="like">좋아요만</option>' +
+            '<option value="comment">댓글만</option>';
+        usernameInput.placeholder = 'username';
+        usernameInput.setAttribute('required', '');
+        usernameInput.removeAttribute('list');
+    }
+}
+</script>
 {% endblock %}

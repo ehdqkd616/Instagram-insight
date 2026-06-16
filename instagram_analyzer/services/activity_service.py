@@ -84,6 +84,34 @@ def search_received_activity(data_dir, username, activity_type="all", from_date=
     }
 
 
+def search_dm_activity(user_id: int, other_party: str = "", activity_type: str = "dm_all",
+                        from_date: str = "", to_date: str = "") -> dict:
+    """DB에서 DM 활동 검색."""
+    from models import search_dm_activity as db_search, get_dm_count
+    rows = db_search(user_id, other_party, activity_type, from_date, to_date)
+    activities = []
+    for row in rows:
+        activities.append({
+            "type":        row["activity_type"],
+            "post_url":    row["link"],
+            "content":     row["content"],
+            "occurred_at": row["occurred_at"],
+            "timestamp":   row["timestamp"],
+            "other_party": row["other_party"],
+            "thread_title": row["thread_title"],
+        })
+    total_stored = get_dm_count(user_id)
+    label = other_party if other_party else "전체 DM"
+    logger.info("search_dm_activity: %r type=%s → %d건", other_party, activity_type, len(activities))
+    return {
+        "username": label,
+        "total": len(activities),
+        "total_stored": total_stored,
+        "activities": activities,
+        "is_dm": True,
+    }
+
+
 def _apply_date_filter(items, from_date, to_date):
     if from_date:
         items = [i for i in items if i["occurred_at"] >= from_date]

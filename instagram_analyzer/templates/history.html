@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}업로드 히스토리 &mdash; Instagram Analyzer{% endblock %}
+
+{% macro diff_badge(v) -%}
+  {% if v is none %}
+    <span class="text-muted small">—</span>
+  {% elif v > 0 %}
+    <span class="badge bg-success-subtle text-success border border-success-subtle">▲ {{ v }}</span>
+  {% elif v < 0 %}
+    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">▼ {{ -v }}</span>
+  {% else %}
+    <span class="badge bg-light text-muted border">변화 없음</span>
+  {% endif %}
+{%- endmacro %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-clock-history me-2 text-ig-purple"></i>업로드 히스토리</h5>
+  <span class="badge bg-secondary ms-2">총 {{ history|length }}회 업로드</span>
+</div>
+
+<div class="alert alert-light border small mb-4">
+  <i class="bi bi-info-circle me-1"></i>
+  인스타그램 데이터를 업로드할 때마다 팔로워·팔로잉 통계가 자동으로 기록됩니다.
+  <strong>주기적으로 데이터를 다시 내보내 업로드</strong>하면 시간에 따른 변화 추이를 확인할 수 있습니다.
+  {% if total_growth_followers is not none %}
+    <br>최초 기록 대비 팔로워 변화:
+    {% if total_growth_followers > 0 %}
+      <span class="text-success fw-semibold">+{{ total_growth_followers }}</span>
+    {% elif total_growth_followers < 0 %}
+      <span class="text-danger fw-semibold">{{ total_growth_followers }}</span>
+    {% else %}
+      <span class="text-muted">변화 없음</span>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if history %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>업로드 일시</th>
+            <th>팔로워</th>
+            <th>팔로잉</th>
+            <th>맞팔</th>
+            <th>맞팔 안 됨</th>
+            <th>나만 팔로우</th>
+            <th>신규 언팔로워</th>
+            <th>업로드 파일</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in history %}
+          <tr>
+            <td class="text-nowrap">
+              <i class="bi bi-calendar-event me-1 text-muted"></i>{{ h.uploaded_at }}
+              {% if loop.first %}<span class="badge bg-ig-pink-subtle text-ig-pink border ms-1">최신</span>{% endif %}
+            </td>
+            <td>
+              <div class="fw-semibold">{{ h.followers_count }}</div>
+              {{ diff_badge(h.diff_followers) }}
+            </td>
+            <td>
+              <div class="fw-semibold">{{ h.following_count }}</div>
+              {{ diff_badge(h.diff_following) }}
+            </td>
+            <td>
+              <div class="fw-semibold">{{ h.mutual_count }}</div>
+              {{ diff_badge(h.diff_mutual) }}
+            </td>
+            <td>{{ h.not_following_back }}</td>
+            <td>{{ h.only_following_me }}</td>
+            <td>
+              {% if h.new_unfollowers > 0 %}
+                <span class="badge bg-danger">{{ h.new_unfollowers }}명</span>
+              {% else %}
+                <span class="text-muted small">0</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="small text-muted" title="{{ h.files_uploaded|join(', ') }}">
+                {{ h.files_uploaded|length }}개 파일
+              </span>
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('history.delete_entry', entry_id=h.id) }}"
+                    onsubmit="return confirm('이 히스토리 기록을 삭제하시겠습니까?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-clock-history display-4 d-block mb-3 text-secondary"></i>
+  <p class="fw-semibold">아직 업로드 기록이 없습니다.</p>
+  <p class="small">홈에서 인스타그램 데이터를 업로드하면 이곳에 기록이 쌓입니다.<br>
+  같은 계정으로 시간차를 두고 여러 번 업로드하면 팔로워/팔로잉 변화 추이를 비교할 수 있습니다.</p>
+  <a href="{{ url_for('index') }}" class="btn btn-ig mt-2">
+    <i class="bi bi-upload me-1"></i>데이터 업로드하러 가기
+  </a>
+</div>
+{% endif %}
+{% endblock %}

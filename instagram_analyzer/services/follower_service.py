@@ -1,6 +1,6 @@
 import logging
 
-from .parser import parse_followers, parse_following
+from .parser import parse_followers, parse_following, parse_recently_unfollowed
 
 logger = logging.getLogger("instagram_analyzer.follower_service")
 
@@ -113,12 +113,18 @@ def get_mutual(data_dir, search=""):
     return {"total": len(result), "accounts": result}
 
 
-def get_stats(data_dir):
+def get_stats(data_dir, user_id=None):
     followers = parse_followers(data_dir)
     following = parse_following(data_dir)
     followers_set = {f["username"] for f in followers}
     following_set = {f["username"] for f in following}
     mutual = followers_set & following_set
+
+    unfollower_count = 0
+    if user_id is not None:
+        from models import get_unfollower_count
+        unfollower_count = get_unfollower_count(user_id)
+
     stats = {
         "followers_count":    len(followers),
         "following_count":    len(following),
@@ -126,10 +132,28 @@ def get_stats(data_dir):
         "not_following_back": len(following_set - followers_set),
         "only_following_me":  len(followers_set - following_set),
         "mutual_ratio":       round(len(mutual) / len(followers) * 100, 1) if followers else 0,
+        "unfollower_count":   unfollower_count,
     }
     logger.info(
-        "stats: 팔로워=%d, 팔로잉=%d, 맞팔=%d, 맞팔안됨=%d",
+        "stats: 팔로워=%d, 팔로잉=%d, 맞팔=%d, 맞팔안됨=%d, 언팔=%d",
         stats["followers_count"], stats["following_count"],
-        stats["mutual_count"], stats["not_following_back"],
+        stats["mutual_count"], stats["not_following_back"], unfollower_count,
     )
     return stats
+
+
+def get_unfollower_history(user_id: int, search: str = "") -> dict:
+    """DB에 저장된 언팔로워 이벤트 목록 (나를 팔로우했다가 언팔한 사람)."""
+    from models import get_unfollower_events
+    events = get_unfollower_events(user_id, search)
+    return {"total": len(events), "accounts": events}
+
+
+def get_recently_unfollowed(data_dir: str, search: str = "") -> dict:
+    """내가 최근 언팔한 계정 목록 (recently_unfollowed_profiles.json)."""
+    accounts = parse_recently_unfollowed(data_dir)
+    if search:
+        q = search.lower()
+        accounts = [a for a in accounts if q in a["username"].lower()]
+    accounts.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"total": len(accounts), "accounts": accounts}

@@ -46,6 +46,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.path == '/history' %}active{% endif %}" href="{{ url_for('history.history_page') }}">
+            <i class="bi bi-clock-history me-1"></i>업로드 히스토리
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.path == '/logs' %}active{% endif %}" href="{{ url_for('logs_page') }}">
             <i class="bi bi-terminal me-1"></i>로그
           </a>
@@ -106,6 +111,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+// 이니셜 아바타 색상: username 해시 기반으로 일관된 색상 배정
+document.addEventListener('DOMContentLoaded', function () {
+  var palette = ['#e1306c','#833ab4','#f77737','#405de6','#5851db','#c13584','#fd1d1d','#f56040','#0095f6','#00b09b'];
+  document.querySelectorAll('.ig-avatar-initials').forEach(function (el) {
+    var u = el.dataset.username || '';
+    var h = 0;
+    for (var i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h);
+    el.style.background = palette[Math.abs(h) % palette.length];
+  });
+});
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
