@@ -1,5 +1,5 @@
 
-' 바탕화면에 Instagram Analyzer 바로가기 생성
+' Create desktop shortcut for Instagram Analyzer
 Set objFSO   = CreateObject("Scripting.FileSystemObject")
 Set objShell = CreateObject("WScript.Shell")
 
@@ -16,12 +16,10 @@ oShortcut.WorkingDirectory = scriptDir
 oShortcut.Description      = "Instagram Analyzer"
 oShortcut.WindowStyle      = 1
 
-' 아이콘 파일이 있으면 사용
 If objFSO.FileExists(iconFile) Then
     oShortcut.IconLocation = iconFile & ",0"
 End If
 
 oShortcut.Save
 
-MsgBox "바탕화면에 'Instagram Analyzer' 바로가기가 생성됐습니다!" & Chr(10) & _
-       "더블클릭으로 실행하세요.", 64, "완료"
+MsgBox "Shortcut created on Desktop!" & Chr(10) & "Double-click 'Instagram Analyzer' to launch.", 64, "Done"
