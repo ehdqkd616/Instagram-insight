@@ -17,8 +17,8 @@ _avatar_cache: dict[str, str] = {}
 
 from config import BASE_DIR, DATA_DIR, UPLOAD_FOLDER, ALLOWED_EXTENSIONS, get_secret_key
 from logging_config import setup_logging, read_recent_logs
-from models import init_db, find_user_by_id, update_instagram_username
-from services.parser import extract_zip, get_data_summary, detect_dm_my_name, parse_dm_from_zip
+from db import init_db, find_user_by_id, update_instagram_username
+from parsers import extract_zip, get_data_summary, detect_dm_my_name, parse_dm_from_zip
 from services.follower_service import get_stats
 
 logger = logging.getLogger("instagram_analyzer.app")
@@ -138,7 +138,7 @@ def create_app():
                     try:
                         my_name = detect_dm_my_name(save_path)
                         if my_name:
-                            from models import store_dm_activity, set_user_setting
+                            from db import store_dm_activity, set_user_setting
                             set_user_setting(current_user.id, "dm_display_name", my_name)
                             dm_acts = parse_dm_from_zip(save_path, my_name)
                             if dm_acts:
@@ -164,8 +164,8 @@ def create_app():
             new_unfollowers_count = 0
             if any("follower" in u.lower() for u in uploaded):
                 try:
-                    from services.parser import parse_followers
-                    from models import process_follower_snapshot, has_follower_snapshot
+                    from parsers import parse_followers
+                    from db import process_follower_snapshot, has_follower_snapshot
                     followers = parse_followers(user_data_dir)
                     if followers:
                         had_prev = has_follower_snapshot(current_user.id)
@@ -181,7 +181,7 @@ def create_app():
 
             # 업로드 히스토리 기록 (시점별 통계 스냅샷 — 추세 비교용)
             try:
-                from models import record_upload_snapshot
+                from db import record_upload_snapshot
                 current_stats = get_stats(user_data_dir, current_user.id)
                 record_upload_snapshot(current_user.id, current_stats, uploaded, new_unfollowers_count)
             except Exception as e:
@@ -269,7 +269,7 @@ def create_app():
 def _detect_instagram_username(data_dir: str):
     """followers_1.json 에서 인스타그램 계정명 자동 감지 시도."""
     try:
-        from services.parser import parse_followers
+        from parsers import parse_followers
         # followers 파일에는 계정명이 없음 — following.json의 title 필드 사용 불가
         # 대신 데이터가 존재한다는 사실 자체를 기록
         pass

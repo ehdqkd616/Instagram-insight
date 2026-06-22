@@ -1,12 +1,12 @@
 import logging
 
-from .parser import parse_liked_posts, parse_liked_comments, parse_comments
+from parsers import parse_liked_posts, parse_liked_comments, parse_comments
 
 logger = logging.getLogger("instagram_analyzer.activity_service")
 
 
 def search_sent_activity(data_dir, username, activity_type="all", from_date="", to_date=""):
-    """내가 특정 계정에 남긴 좋아요/댓글 (F-04 발신)."""
+    """내가 특정 계정에 남긴 좋아요/댓글 (발신)."""
     uname = username.lower().strip()
     logger.info(
         "search_sent_activity: username=%r, type=%s, from=%s, to=%s",
@@ -64,14 +64,8 @@ def search_sent_activity(data_dir, username, activity_type="all", from_date="", 
 
 
 def search_received_activity(data_dir, username, activity_type="all", from_date="", to_date=""):
-    """특정 계정이 내 게시물에 남긴 좋아요/댓글 (F-03 수신).
-
-    인스타그램 공식 내보내기에는 타인이 내 게시물에 남긴 좋아요·댓글 데이터가 포함되지 않음.
-    """
-    logger.warning(
-        "search_received_activity: username=%r — 인스타그램 내보내기에 수신 데이터 미포함",
-        username,
-    )
+    """특정 계정이 내 게시물에 남긴 활동 (수신) — 인스타그램 내보내기에 미포함."""
+    logger.warning("search_received_activity: 수신 데이터 미포함 username=%r", username)
     return {
         "username": username,
         "total": 0,
@@ -85,30 +79,29 @@ def search_received_activity(data_dir, username, activity_type="all", from_date=
 
 
 def search_dm_activity(user_id: int, other_party: str = "", activity_type: str = "dm_all",
-                        from_date: str = "", to_date: str = "") -> dict:
+                       from_date: str = "", to_date: str = "") -> dict:
     """DB에서 DM 활동 검색."""
-    from models import search_dm_activity as db_search, get_dm_count
+    from db import search_dm_activity as db_search, get_dm_count
     rows = db_search(user_id, other_party, activity_type, from_date, to_date)
-    activities = []
-    for row in rows:
-        activities.append({
-            "type":        row["activity_type"],
-            "post_url":    row["link"],
-            "content":     row["content"],
-            "occurred_at": row["occurred_at"],
-            "timestamp":   row["timestamp"],
-            "other_party": row["other_party"],
-            "thread_title": row["thread_title"],
-        })
+    activities = [{
+        "type":         row["activity_type"],
+        "post_url":     row["link"],
+        "content":      row["content"],
+        "occurred_at":  row["occurred_at"],
+        "timestamp":    row["timestamp"],
+        "other_party":  row["other_party"],
+        "thread_title": row["thread_title"],
+    } for row in rows]
+
     total_stored = get_dm_count(user_id)
     label = other_party if other_party else "전체 DM"
     logger.info("search_dm_activity: %r type=%s → %d건", other_party, activity_type, len(activities))
     return {
-        "username": label,
-        "total": len(activities),
+        "username":     label,
+        "total":        len(activities),
         "total_stored": total_stored,
-        "activities": activities,
-        "is_dm": True,
+        "activities":   activities,
+        "is_dm":        True,
     }
 
 

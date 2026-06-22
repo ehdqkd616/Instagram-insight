@@ -1,12 +1,14 @@
 """
 Instagram Analyzer — 비밀번호 긴급 초기화 도구
-python reset_password.py 로 실행하세요.
+instagram_analyzer/ 폴더에서 python reset_password.py 로 실행하세요.
 """
 import sys
-sys.path.insert(0, "instagram_analyzer")
+import os
+
+# instagram_analyzer/ 내부에서 실행되므로 경로 추가 불필요
 sys.stdout.reconfigure(encoding="utf-8")
 
-from models import init_db, list_users, admin_update_user
+from db import init_db, list_users, admin_update_user
 
 init_db()
 users = list_users()
@@ -47,4 +49,7 @@ print()
 print(f"완료! '{target.username}' 계정의 비밀번호가 초기화됐습니다.")
 print(f"이제 아이디 '{target.username}' / 새 비밀번호로 로그인하세요.")
 print()
-input("Enter 키를 눌러 종료...")
+try:
+    input("Enter 키를 눌러 종료...")
+except EOFError:
+    pass

@@ -25,7 +25,7 @@ def activity_page():
     if direction == "dm":
         # DM 검색은 계정명 없이도 가능 (전체 DM 조회)
         data = search_dm_activity(current_user.id, username, activity_type, from_date, to_date)
-        from models import get_dm_thread_partners
+        from db import get_dm_thread_partners
         dm_partners = get_dm_thread_partners(current_user.id, limit=100)
     elif username:
         if direction == "sent":

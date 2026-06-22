@@ -5,7 +5,7 @@ from functools import wraps
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from models import (
+from db import (
     admin_delete_user, admin_get_all_users, admin_update_user,
     create_user, get_system_stats,
 )
@@ -61,7 +61,7 @@ def create_user_action():
 @login_required
 @admin_required
 def edit_user(user_id):
-    from models import find_user_by_id
+    from db import find_user_by_id
     target = find_user_by_id(user_id)
     if target is None:
         flash("존재하지 않는 사용자입니다.", "danger")
@@ -78,7 +78,7 @@ def edit_user(user_id):
 
         # 마지막 관리자의 관리자 권한은 제거 불가
         if target.is_admin and not is_admin:
-            from models import get_system_stats as _gs
+            from db import get_system_stats as _gs
             if _gs()["admin_users"] <= 1:
                 flash("마지막 관리자의 권한은 제거할 수 없습니다.", "danger")
                 return render_template("admin/edit_user.html", target=target)
@@ -99,7 +99,7 @@ def edit_user(user_id):
 @login_required
 @admin_required
 def delete_user(user_id):
-    from models import find_user_by_id, get_system_stats as _gs
+    from db import find_user_by_id, get_system_stats as _gs
 
     if user_id == current_user.id:
         flash("자기 자신은 삭제할 수 없습니다.", "danger")

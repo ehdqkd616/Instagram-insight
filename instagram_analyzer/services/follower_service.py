@@ -1,6 +1,6 @@
 import logging
 
-from .parser import parse_followers, parse_following, parse_recently_unfollowed
+from parsers import parse_followers, parse_following, parse_recently_unfollowed
 
 logger = logging.getLogger("instagram_analyzer.follower_service")
 
@@ -26,19 +26,17 @@ def get_followers(data_dir, search="", sort="newest", from_date="", to_date=""):
         followers.sort(key=lambda x: x["username"].lower())
 
     logger.debug(
-        "get_followers: 전체 %d명 → 필터 후 %d명 (search=%r, sort=%s, from=%s, to=%s)",
-        total_raw, len(followers), search, sort, from_date, to_date,
+        "get_followers: 전체 %d명 → 필터 후 %d명 (search=%r, sort=%s)",
+        total_raw, len(followers), search, sort,
     )
     return {"total": len(followers), "followers": followers}
 
 
 def get_following(data_dir, search="", sort="newest", from_date="", to_date=""):
-    """내가 팔로우하는 계정 목록 (맞팔 여부 포함)."""
     following = parse_following(data_dir)
     followers_set = {f["username"] for f in parse_followers(data_dir)}
     total_raw = len(following)
 
-    # 맞팔 여부 표시
     for f in following:
         f["is_mutual"] = f["username"] in followers_set
 
@@ -66,48 +64,36 @@ def get_following(data_dir, search="", sort="newest", from_date="", to_date=""):
 
 
 def get_not_following_back(data_dir, search=""):
-    """내가 팔로우하지만 나를 팔로우하지 않는 계정."""
     following = parse_following(data_dir)
     followers_set = {f["username"] for f in parse_followers(data_dir)}
-
     result = [f for f in following if f["username"] not in followers_set]
-
     if search:
         q = search.lower()
         result = [f for f in result if q in f["username"].lower()]
-
     result.sort(key=lambda x: x["timestamp"], reverse=True)
     logger.info("get_not_following_back: 팔로잉 %d명 중 맞팔 안 됨 %d명", len(following), len(result))
     return {"total": len(result), "accounts": result}
 
 
 def get_only_following_me(data_dir, search=""):
-    """나를 팔로우하지만 내가 팔로우하지 않는 계정."""
     followers = parse_followers(data_dir)
     following_set = {f["username"] for f in parse_following(data_dir)}
-
     result = [f for f in followers if f["username"] not in following_set]
-
     if search:
         q = search.lower()
         result = [f for f in result if q in f["username"].lower()]
-
     result.sort(key=lambda x: x["timestamp"], reverse=True)
     logger.info("get_only_following_me: 팔로워 %d명 중 나만 팔로우 %d명", len(followers), len(result))
     return {"total": len(result), "accounts": result}
 
 
 def get_mutual(data_dir, search=""):
-    """맞팔 계정."""
     followers = parse_followers(data_dir)
     following_set = {f["username"] for f in parse_following(data_dir)}
-
     result = [f for f in followers if f["username"] in following_set]
-
     if search:
         q = search.lower()
         result = [f for f in result if q in f["username"].lower()]
-
     result.sort(key=lambda x: x["timestamp"], reverse=True)
     logger.info("get_mutual: 맞팔 %d명", len(result))
     return {"total": len(result), "accounts": result}
@@ -122,7 +108,7 @@ def get_stats(data_dir, user_id=None):
 
     unfollower_count = 0
     if user_id is not None:
-        from models import get_unfollower_count
+        from db import get_unfollower_count
         unfollower_count = get_unfollower_count(user_id)
 
     stats = {
@@ -143,14 +129,12 @@ def get_stats(data_dir, user_id=None):
 
 
 def get_unfollower_history(user_id: int, search: str = "") -> dict:
-    """DB에 저장된 언팔로워 이벤트 목록 (나를 팔로우했다가 언팔한 사람)."""
-    from models import get_unfollower_events
+    from db import get_unfollower_events
     events = get_unfollower_events(user_id, search)
     return {"total": len(events), "accounts": events}
 
 
 def get_recently_unfollowed(data_dir: str, search: str = "") -> dict:
-    """내가 최근 언팔한 계정 목록 (recently_unfollowed_profiles.json)."""
     accounts = parse_recently_unfollowed(data_dir)
     if search:
         q = search.lower()

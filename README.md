@@ -53,6 +53,7 @@ pip install -r instagram_analyzer/requirements.txt
 #### 방법 A — Windows 바탕화면 바로가기 (권장)
 
 ```bash
+cd instagram_analyzer
 python make_shortcut.py
 ```
 
@@ -74,16 +75,32 @@ python app.py
 
 ```
 Instagram-insight/
-├── make_shortcut.py              # 바탕화면 바로가기 생성기
-├── reset_password.py             # 비밀번호 긴급 초기화 도구
-│
 └── instagram_analyzer/
     ├── app.py                    # Flask 앱 진입점
     ├── config.py                 # 설정값
-    ├── models.py                 # DB 모델 (SQLite)
     ├── logging_config.py         # 로깅 설정
     ├── launcher.py               # Windows GUI 런처
+    ├── make_shortcut.py          # 바탕화면 바로가기 생성기
+    ├── reset_password.py         # 비밀번호 긴급 초기화 도구
     ├── requirements.txt
+    │
+    ├── db/                       # 데이터베이스 레이어
+    │   ├── connection.py         # DB 연결, 테이블 초기화
+    │   ├── users.py              # 사용자 모델 및 CRUD
+    │   ├── followers.py          # 팔로워 스냅샷, 언팔로워 감지
+    │   ├── activity.py           # DM 활동, 사용자 설정
+    │   └── history.py            # 업로드 히스토리, 시스템 통계
+    │
+    ├── parsers/                  # Instagram 데이터 파싱
+    │   ├── utils.py              # 공통 유틸 (_fix_str 한글 복원 등)
+    │   ├── followers.py          # 팔로워·팔로잉·최근 언팔 파싱
+    │   ├── activity.py           # 좋아요·댓글 파싱
+    │   ├── dm.py                 # DM 파싱
+    │   └── zip_handler.py        # ZIP 추출
+    │
+    ├── services/                 # 비즈니스 로직
+    │   ├── follower_service.py   # 팔로워 분석, 통계
+    │   └── activity_service.py   # 활동 검색
     │
     ├── routes/                   # Flask 라우트
     │   ├── auth.py               # 로그인·회원가입·계정 찾기·설정
@@ -91,11 +108,6 @@ Instagram-insight/
     │   ├── activity.py           # 활동 검색 (좋아요·댓글·DM)
     │   ├── history.py            # 업로드 히스토리
     │   └── admin.py              # 관리자 페이지
-    │
-    ├── services/                 # 비즈니스 로직
-    │   ├── parser.py             # JSON·ZIP 파싱
-    │   ├── follower_service.py   # 팔로워 분석
-    │   └── activity_service.py  # 활동 검색
     │
     ├── templates/                # Jinja2 HTML 템플릿
     └── static/                   # CSS·JS
@@ -120,6 +132,7 @@ Instagram-insight/
 
 #### 방법 2 — 긴급 초기화 (터미널)
 ```bash
+cd instagram_analyzer
 python reset_password.py
 ```
 

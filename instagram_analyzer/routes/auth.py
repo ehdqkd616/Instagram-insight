@@ -3,7 +3,7 @@ import logging
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
-from models import (
+from db import (
     admin_update_user, create_user, find_user_by_username, list_users,
     get_security_question, set_security_qa, verify_security_answer,
 )
@@ -86,8 +86,7 @@ def register():
 @bp.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
-    from models import get_security_question
-
+    
     question = get_security_question(current_user.id)
 
     if request.method == "POST":
