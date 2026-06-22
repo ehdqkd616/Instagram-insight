@@ -63,4 +63,7 @@ except subprocess.CalledProcessError as e:
 finally:
     os.unlink(tmp)
 
-input("\nEnter 키를 눌러 창 닫기...")
+try:
+    input("\nEnter 키를 눌러 창 닫기...")
+except EOFError:
+    pass

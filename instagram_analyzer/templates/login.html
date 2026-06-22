@@ -63,8 +63,12 @@
         </div>
       </div>
 
-      <!-- 회원가입 링크 -->
-      <p class="text-center mt-3 small text-muted">
+      <!-- 하단 링크 -->
+      <div class="text-center mt-3 small text-muted">
+        <a href="{{ url_for('auth.find_id') }}" class="text-decoration-none me-3">아이디 찾기</a>
+        <a href="{{ url_for('auth.forgot_password') }}" class="text-decoration-none">비밀번호 찾기</a>
+      </div>
+      <p class="text-center mt-2 small text-muted">
         계정이 없으신가요?
         <a href="{{ url_for('auth.register') }}" class="text-ig-pink fw-semibold text-decoration-none">회원가입</a>
       </p>

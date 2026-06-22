@@ -64,6 +64,14 @@ def init_db():
             logger.info("users 테이블에 is_admin 컬럼 추가됨 (마이그레이션)")
         except sqlite3.OperationalError:
             pass  # 이미 존재
+        # 보안 질문/답 컬럼 마이그레이션
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN security_question TEXT DEFAULT ''")
+            conn.execute("ALTER TABLE users ADD COLUMN security_answer_hash TEXT DEFAULT ''")
+            logger.info("users 테이블에 security_question/answer 컬럼 추가됨 (마이그레이션)")
+        except sqlite3.OperationalError:
+            pass
+
         # 관리자가 없으면 최초 가입 사용자에게 자동 부여
         admin_count = conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
         if admin_count == 0:
@@ -181,6 +189,35 @@ def update_instagram_username(user_id: int, ig_username: str):
             (ig_username, int(user_id)),
         )
     logger.info("instagram_username 업데이트: user_id=%d → %r", user_id, ig_username)
+
+
+def set_security_qa(user_id: int, question: str, answer: str):
+    """보안 질문과 답 설정. 답은 소문자 변환 후 해시 저장."""
+    answer_hash = generate_password_hash(answer.strip().lower())
+    with _get_db() as conn:
+        conn.execute(
+            "UPDATE users SET security_question=?, security_answer_hash=? WHERE id=?",
+            (question.strip(), answer_hash, int(user_id)),
+        )
+    logger.info("보안 질문 설정: user_id=%d", user_id)
+
+
+def get_security_question(user_id: int) -> str:
+    with _get_db() as conn:
+        row = conn.execute(
+            "SELECT security_question FROM users WHERE id=?", (int(user_id),)
+        ).fetchone()
+    return row[0] if row else ""
+
+
+def verify_security_answer(user_id: int, answer: str) -> bool:
+    with _get_db() as conn:
+        row = conn.execute(
+            "SELECT security_answer_hash FROM users WHERE id=?", (int(user_id),)
+        ).fetchone()
+    if not row or not row[0]:
+        return False
+    return check_password_hash(row[0], answer.strip().lower())
 
 
 def list_users() -> list[User]:

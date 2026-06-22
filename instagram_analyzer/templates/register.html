@@ -63,7 +63,7 @@
                        autocomplete="new-password" minlength="6" required>
               </div>
             </div>
-            <div class="mb-4">
+            <div class="mb-3">
               <label class="form-label small fw-semibold">비밀번호 확인 <span class="text-danger">*</span></label>
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
@@ -71,6 +71,29 @@
                        autocomplete="new-password" required>
               </div>
             </div>
+
+            <hr class="my-3">
+            <p class="small fw-semibold mb-2"><i class="bi bi-shield-lock me-1 text-ig-pink"></i>비밀번호 찾기용 보안 질문</p>
+
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">보안 질문 <span class="text-danger">*</span></label>
+              <select name="security_question" class="form-select" required>
+                <option value="">질문 선택...</option>
+                {% for q in security_questions %}
+                <option value="{{ q }}">{{ q }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="form-label small fw-semibold">답변 <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                <input type="text" name="security_answer" class="form-control"
+                       placeholder="기억하기 쉬운 답변 입력" required>
+              </div>
+              <div class="form-text">대소문자 구분 없이 인식됩니다.</div>
+            </div>
+
             <button type="submit" class="btn btn-ig w-100">
               <i class="bi bi-person-plus me-1"></i>회원가입
             </button>
