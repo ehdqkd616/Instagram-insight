@@ -6,7 +6,7 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 
 from db import (
-    admin_delete_user, admin_get_all_users, admin_update_user,
+    admin_delete_user, admin_get_all_users, admin_set_user_status, admin_update_user,
     create_user, get_system_stats,
 )
 
@@ -93,6 +93,41 @@ def edit_user(user_id):
         return redirect(url_for("admin.dashboard"))
 
     return render_template("admin/edit_user.html", target=target)
+
+
+@bp.route("/users/<int:user_id>/approve", methods=["POST"])
+@login_required
+@admin_required
+def approve_user(user_id):
+    from db import find_user_by_id
+    target = find_user_by_id(user_id)
+    if target is None:
+        flash("존재하지 않는 사용자입니다.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    admin_set_user_status(user_id, "approved")
+    flash(f"'{target.username}' 계정을 승인했습니다.", "success")
+    return redirect(url_for("admin.dashboard"))
+
+
+@bp.route("/users/<int:user_id>/reject", methods=["POST"])
+@login_required
+@admin_required
+def reject_user(user_id):
+    from db import find_user_by_id
+
+    if user_id == current_user.id:
+        flash("자기 자신은 거부할 수 없습니다.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    target = find_user_by_id(user_id)
+    if target is None:
+        flash("존재하지 않는 사용자입니다.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    admin_set_user_status(user_id, "rejected")
+    flash(f"'{target.username}' 계정의 가입을 거부했습니다.", "warning")
+    return redirect(url_for("admin.dashboard"))
 
 
 @bp.route("/users/<int:user_id>/delete", methods=["POST"])

@@ -33,13 +33,20 @@ def login():
 
         user = find_user_by_username(username)
         if user and user.check_password(password):
-            login_user(user, remember=True)
-            logger.info("로그인 성공: user_id=%d username=%r", user.id, user.username)
-            next_page = request.args.get("next")
-            return redirect(next_page or url_for("index"))
-
-        logger.warning("로그인 실패: username=%r", username)
-        flash("아이디 또는 비밀번호가 올바르지 않습니다.", "danger")
+            if user.status == "pending":
+                logger.info("로그인 차단(승인 대기): user_id=%d username=%r", user.id, user.username)
+                flash("가입 승인 대기 중입니다. 관리자 승인 후 로그인할 수 있습니다.", "warning")
+            elif user.status == "rejected":
+                logger.info("로그인 차단(거부됨): user_id=%d username=%r", user.id, user.username)
+                flash("가입이 거부된 계정입니다. 관리자에게 문의하세요.", "danger")
+            else:
+                login_user(user, remember=True)
+                logger.info("로그인 성공: user_id=%d username=%r", user.id, user.username)
+                next_page = request.args.get("next")
+                return redirect(next_page or url_for("index"))
+        else:
+            logger.warning("로그인 실패: username=%r", username)
+            flash("아이디 또는 비밀번호가 올바르지 않습니다.", "danger")
 
     return render_template("login.html")
 
@@ -72,12 +79,15 @@ def register():
         if error:
             flash(error, "danger")
         else:
-            user = create_user(username, password, display_name)
+            user = create_user(username, password, display_name, status="pending")
             if user is None:
                 flash("이미 사용 중인 아이디입니다.", "danger")
             else:
                 set_security_qa(user.id, sec_q, sec_a)
-                flash("회원가입이 완료됐습니다. 로그인해주세요.", "success")
+                if user.status == "approved":
+                    flash("회원가입이 완료됐습니다. 로그인해주세요.", "success")
+                else:
+                    flash("회원가입 신청이 완료됐습니다. 관리자 승인 후 로그인할 수 있습니다.", "info")
                 return redirect(url_for("auth.login"))
 
     return render_template("register.html", security_questions=SECURITY_QUESTIONS)

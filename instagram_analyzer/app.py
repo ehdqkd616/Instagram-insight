@@ -42,7 +42,11 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return find_user_by_id(int(user_id))
+        user = find_user_by_id(int(user_id))
+        # 승인 취소/거부된 계정은 기존 세션이 남아있어도 즉시 로그아웃 처리
+        if user and user.status != "approved":
+            return None
+        return user
 
     # ── 블루프린트 등록 ──────────────────────────────────
     from routes.auth import bp as auth_bp

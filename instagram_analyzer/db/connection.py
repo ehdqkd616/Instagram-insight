@@ -29,6 +29,7 @@ def init_db():
             "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE users ADD COLUMN security_question TEXT DEFAULT ''",
             "ALTER TABLE users ADD COLUMN security_answer_hash TEXT DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'",
         ):
             try:
                 conn.execute(col_sql)

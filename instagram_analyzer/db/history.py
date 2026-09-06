@@ -53,6 +53,7 @@ def get_system_stats() -> dict:
     with _get_db() as conn:
         total_users       = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         admin_users       = conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+        pending_users     = conn.execute("SELECT COUNT(*) FROM users WHERE status='pending'").fetchone()[0]
         total_uploads     = conn.execute("SELECT COUNT(*) FROM upload_history").fetchone()[0]
         total_dm          = conn.execute("SELECT COUNT(*) FROM dm_activity").fetchone()[0]
         total_unfollowers = conn.execute("SELECT COUNT(*) FROM unfollower_events").fetchone()[0]
@@ -60,6 +61,7 @@ def get_system_stats() -> dict:
     return {
         "total_users":       total_users,
         "admin_users":       admin_users,
+        "pending_users":     pending_users,
         "total_uploads":     total_uploads,
         "total_dm":          total_dm,
         "total_unfollowers": total_unfollowers,

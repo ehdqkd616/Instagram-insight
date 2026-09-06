@@ -14,16 +14,22 @@ logger = logging.getLogger("instagram_analyzer.db.users")
 
 class User(UserMixin):
     def __init__(self, id: int, username: str, password_hash: str,
-                 display_name: str = "", instagram_username: str = "", is_admin: int = 0):
+                 display_name: str = "", instagram_username: str = "", is_admin: int = 0,
+                 status: str = "approved"):
         self.id = id
         self.username = username
         self.password_hash = password_hash
         self.display_name = display_name or username
         self.instagram_username = instagram_username
         self.is_admin = bool(is_admin)
+        self.status = status
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def is_active(self) -> bool:
+        return self.status == "approved"
 
     @property
     def data_dir(self) -> str:
@@ -37,16 +43,21 @@ class User(UserMixin):
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
-def create_user(username: str, password: str, display_name: str = "") -> "User | None":
+def create_user(username: str, password: str, display_name: str = "",
+                 status: str = "approved") -> "User | None":
     ph = generate_password_hash(password)
     try:
         with _get_db() as conn:
+            is_first = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+            # 최초 가입자는 관리자가 없으므로 스스로를 승인할 수 없음 — 자동으로 관리자+승인 처리
+            final_status = "approved" if is_first else status
             cur = conn.execute(
-                "INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)",
-                (username.strip(), ph, display_name.strip()),
+                "INSERT INTO users (username, password_hash, display_name, status, is_admin) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (username.strip(), ph, display_name.strip(), final_status, 1 if is_first else 0),
             )
             user_id = cur.lastrowid
-        logger.info("신규 사용자 생성: id=%d username=%r", user_id, username)
+        logger.info("신규 사용자 생성: id=%d username=%r status=%s", user_id, username, final_status)
         return find_user_by_id(user_id)
     except sqlite3.IntegrityError:
         logger.warning("사용자 생성 실패 — 중복 username: %r", username)
@@ -56,7 +67,7 @@ def create_user(username: str, password: str, display_name: str = "") -> "User |
 def find_user_by_username(username: str) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username, is_admin "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status "
             "FROM users WHERE username = ?",
             (username.strip(),),
         ).fetchone()
@@ -66,7 +77,7 @@ def find_user_by_username(username: str) -> "User | None":
 def find_user_by_id(user_id: int) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username, is_admin "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status "
             "FROM users WHERE id = ?",
             (int(user_id),),
         ).fetchone()
@@ -76,7 +87,8 @@ def find_user_by_id(user_id: int) -> "User | None":
 def list_users() -> list:
     with _get_db() as conn:
         rows = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username, is_admin FROM users"
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status "
+            "FROM users"
         ).fetchall()
     return [User(*r) for r in rows]
 
@@ -127,14 +139,22 @@ def admin_get_all_users() -> list:
         rows = conn.execute("""
             SELECT
                 u.id, u.username, u.display_name, u.instagram_username,
-                u.is_admin, u.created_at,
+                u.is_admin, u.status, u.created_at,
                 (SELECT COUNT(*) FROM upload_history    WHERE user_id = u.id) AS upload_count,
                 (SELECT COUNT(*) FROM dm_activity       WHERE user_id = u.id) AS dm_count,
                 (SELECT COUNT(*) FROM follower_snapshots WHERE user_id = u.id) AS snapshot_count,
                 (SELECT COUNT(*) FROM unfollower_events  WHERE user_id = u.id) AS unfollower_count
-            FROM users u ORDER BY u.id
+            FROM users u ORDER BY (u.status = 'pending') DESC, u.id
         """).fetchall()
     return [dict(r) for r in rows]
+
+
+def admin_set_user_status(user_id: int, status: str):
+    if status not in ("pending", "approved", "rejected"):
+        raise ValueError(f"invalid status: {status!r}")
+    with _get_db() as conn:
+        conn.execute("UPDATE users SET status=? WHERE id=?", (status, int(user_id)))
+    logger.info("관리자가 사용자 상태 변경: user_id=%d status=%s", user_id, status)
 
 
 def admin_update_user(user_id: int, display_name: str = None,

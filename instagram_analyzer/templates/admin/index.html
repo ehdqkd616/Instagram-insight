@@ -35,6 +35,13 @@
   </div>
 </div>
 
+{% if stats.pending_users > 0 %}
+<div class="alert alert-warning d-flex align-items-center mb-4">
+  <i class="bi bi-hourglass-split me-2"></i>
+  승인 대기 중인 가입 신청이 <strong class="mx-1">{{ stats.pending_users }}</strong>건 있습니다.
+</div>
+{% endif %}
+
 <!-- 사용자 목록 -->
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
@@ -53,6 +60,7 @@
             <th>표시 이름</th>
             <th>인스타그램</th>
             <th>권한</th>
+            <th>가입상태</th>
             <th>업로드</th>
             <th>DM</th>
             <th>가입일</th>
@@ -84,6 +92,15 @@
                 <span class="badge bg-light text-muted border">일반</span>
               {% endif %}
             </td>
+            <td>
+              {% if u.status == 'approved' %}
+                <span class="badge bg-success">승인됨</span>
+              {% elif u.status == 'pending' %}
+                <span class="badge bg-warning text-dark">대기중</span>
+              {% else %}
+                <span class="badge bg-secondary">거부됨</span>
+              {% endif %}
+            </td>
             <td class="text-center">{{ u.upload_count }}</td>
             <td class="text-center">
               {% if u.dm_count > 0 %}
@@ -95,6 +112,24 @@
             <td class="small text-muted text-nowrap">{{ u.created_at[:10] if u.created_at else '—' }}</td>
             <td class="pe-3">
               <div class="d-flex gap-1">
+                {% if u.status == 'pending' %}
+                <form method="POST" action="{{ url_for('admin.approve_user', user_id=u.id) }}">
+                  <button type="submit" class="btn btn-outline-success btn-sm" title="승인">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.reject_user', user_id=u.id) }}">
+                  <button type="submit" class="btn btn-outline-warning btn-sm" title="거부">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </form>
+                {% elif u.status == 'rejected' and u.id != current_user.id %}
+                <form method="POST" action="{{ url_for('admin.approve_user', user_id=u.id) }}">
+                  <button type="submit" class="btn btn-outline-success btn-sm" title="다시 승인">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </form>
+                {% endif %}
                 <a href="{{ url_for('admin.edit_user', user_id=u.id) }}"
                    class="btn btn-outline-primary btn-sm" title="수정">
                   <i class="bi bi-pencil"></i>
@@ -114,7 +149,7 @@
           </tr>
           {% else %}
           <tr>
-            <td colspan="9" class="text-center text-muted py-4">사용자가 없습니다.</td>
+            <td colspan="10" class="text-center text-muted py-4">사용자가 없습니다.</td>
           </tr>
           {% endfor %}
         </tbody>
