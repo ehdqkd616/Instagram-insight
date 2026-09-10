@@ -25,6 +25,8 @@ logger = logging.getLogger("instagram_analyzer.app")
 
 
 def create_app():
+    log_file = setup_logging(BASE_DIR)
+
     app = Flask(__name__)
     app.secret_key = get_secret_key()
     app.config["DATA_DIR"] = DATA_DIR
@@ -33,6 +35,12 @@ def create_app():
 
     os.makedirs(DATA_DIR, exist_ok=True)
     init_db()
+
+    logger.info("=" * 60)
+    logger.info("Instagram Analyzer 시작 (worker pid=%d)", os.getpid())
+    logger.info("로그 파일: %s", log_file)
+    logger.info("데이터 디렉토리: %s", DATA_DIR)
+    logger.info("=" * 60)
 
     # ── Flask-Login 설정 ─────────────────────────────────
     login_manager = LoginManager(app)
@@ -282,12 +290,6 @@ def _detect_instagram_username(data_dir: str):
 
 
 if __name__ == "__main__":
-    log_file = setup_logging(BASE_DIR)
     app = create_app()
-    logger.info("=" * 60)
-    logger.info("Instagram Analyzer 시작")
-    logger.info("로그 파일: %s", log_file)
-    logger.info("데이터 디렉토리: %s", DATA_DIR)
     logger.info("접속 주소: http://127.0.0.1:5000")
-    logger.info("=" * 60)
     app.run(debug=True, host="127.0.0.1", port=5000)
