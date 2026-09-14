@@ -31,6 +31,7 @@ from db.activity import (
 from db.history import (
     record_upload_snapshot,
     get_upload_history,
+    get_last_upload_at,
     delete_upload_history_entry,
     get_system_stats,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "get_unfollower_events", "get_unfollower_count",
     "set_user_setting", "get_user_setting",
     "store_dm_activity", "search_dm_activity", "get_dm_count", "get_dm_thread_partners",
-    "record_upload_snapshot", "get_upload_history", "delete_upload_history_entry",
+    "record_upload_snapshot", "get_upload_history", "get_last_upload_at",
+    "delete_upload_history_entry",
     "get_system_stats",
 ]

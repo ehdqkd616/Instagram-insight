@@ -23,6 +23,17 @@ def record_upload_snapshot(user_id: int, stats: dict, files_uploaded: list, new_
     return row_id
 
 
+def get_last_upload_at(user_id: int) -> str:
+    """이 사용자의 가장 최근 업로드 시각(직전 스냅샷이 찍힌 시점)을 반환.
+    언팔 감지 시 '마지막으로 팔로우가 확인된 시점'의 하한선으로 사용한다."""
+    with _get_db() as conn:
+        row = conn.execute(
+            "SELECT uploaded_at FROM upload_history WHERE user_id=? ORDER BY uploaded_at DESC LIMIT 1",
+            (int(user_id),)
+        ).fetchone()
+    return row["uploaded_at"] if row else ""
+
+
 def get_upload_history(user_id: int) -> list:
     with _get_db() as conn:
         rows = conn.execute(

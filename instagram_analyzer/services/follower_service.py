@@ -32,7 +32,7 @@ def get_followers(data_dir, search="", sort="newest", from_date="", to_date=""):
     return {"total": len(followers), "followers": followers}
 
 
-def get_following(data_dir, search="", sort="newest", from_date="", to_date=""):
+def get_following(data_dir, search="", sort="newest", from_date="", to_date="", mutual=""):
     following = parse_following(data_dir)
     followers_set = {f["username"] for f in parse_followers(data_dir)}
     total_raw = len(following)
@@ -43,6 +43,11 @@ def get_following(data_dir, search="", sort="newest", from_date="", to_date=""):
     if search:
         q = search.lower()
         following = [f for f in following if q in f["username"].lower()]
+
+    if mutual == "mutual":
+        following = [f for f in following if f["is_mutual"]]
+    elif mutual == "not_mutual":
+        following = [f for f in following if not f["is_mutual"]]
 
     if from_date:
         following = [f for f in following if f["followed_at"] >= from_date]
@@ -57,8 +62,8 @@ def get_following(data_dir, search="", sort="newest", from_date="", to_date=""):
         following.sort(key=lambda x: x["username"].lower())
 
     logger.debug(
-        "get_following: 전체 %d명 → 필터 후 %d명 (search=%r, sort=%s)",
-        total_raw, len(following), search, sort,
+        "get_following: 전체 %d명 → 필터 후 %d명 (search=%r, sort=%s, mutual=%r)",
+        total_raw, len(following), search, sort, mutual,
     )
     return {"total": len(following), "following": following}
 

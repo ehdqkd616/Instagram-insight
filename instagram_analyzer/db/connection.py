@@ -55,11 +55,16 @@ def init_db():
                 user_id       INTEGER NOT NULL,
                 username      TEXT    NOT NULL,
                 followed_at   TEXT    DEFAULT '',
+                last_seen_at  TEXT    DEFAULT '',
                 unfollowed_at TEXT    DEFAULT '',
                 detected_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, username)
             )
         """)
+        try:
+            conn.execute("ALTER TABLE unfollower_events ADD COLUMN last_seen_at TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS dm_activity (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,

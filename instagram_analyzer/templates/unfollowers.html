@@ -86,6 +86,7 @@
         <i class="bi bi-info-circle me-1 text-danger"></i>
         <strong>나를 팔로우했다가 언팔로우한 사람</strong> 목록입니다.
         인스타그램 내보내기 데이터에는 이 기록이 포함되지 않아, <strong>데이터를 두 번 이상 업로드</strong>하여 이전·현재 팔로워 목록을 비교할 때 자동으로 감지됩니다.
+        정확한 언팔 날짜는 알 수 없어, <strong>마지막으로 팔로우가 확인된 날짜 ~ 언팔이 감지된 날짜</strong> 범위로 표시됩니다.
       {% elif tab == 'recently_unfollowed' %}
         <i class="bi bi-info-circle me-1 text-secondary"></i>
         <strong>내가 최근에 언팔로우한 계정</strong> 목록입니다. (내보내기 시점 기준)
@@ -127,7 +128,7 @@
               <th>#</th>
               <th>계정명</th>
               <th><i class="bi bi-calendar-plus text-success me-1"></i>팔로우 날짜</th>
-              <th><i class="bi bi-calendar-x text-danger me-1"></i>언팔 감지일</th>
+              <th><i class="bi bi-calendar-x text-danger me-1"></i>언팔 추정 시점</th>
               <th>프로필</th>
             </tr>
           </thead>
@@ -148,7 +149,13 @@
                 </div>
               </td>
               <td class="text-muted small">{{ e.followed_at or '알 수 없음' }}</td>
-              <td class="text-muted small">{{ e.unfollowed_at or '알 수 없음' }}</td>
+              <td class="text-muted small">
+                {% if e.last_seen_at %}
+                  {{ e.last_seen_at }} ~ {{ e.unfollowed_at or '알 수 없음' }}
+                {% else %}
+                  {{ e.unfollowed_at or '알 수 없음' }} 감지 (그 이전은 알 수 없음)
+                {% endif %}
+              </td>
               <td>
                 <a href="https://www.instagram.com/{{ e.username }}/" target="_blank" class="btn btn-outline-secondary btn-sm">
                   <i class="bi bi-box-arrow-up-right"></i>

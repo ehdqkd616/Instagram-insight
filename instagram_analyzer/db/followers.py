@@ -15,7 +15,10 @@ def has_follower_snapshot(user_id: int) -> bool:
     return (row[0] if row else 0) > 0
 
 
-def process_follower_snapshot(user_id: int, followers: list) -> int:
+def process_follower_snapshot(user_id: int, followers: list, last_seen_at: str = "") -> int:
+    """last_seen_at: 이 스냅샷 직전(마지막으로 팔로우가 확인된) 업로드 시각.
+    인스타그램 내보내기에는 실제 언팔 날짜가 없어서, '마지막으로 팔로우 확인됨(last_seen_at)
+    ~ 지금 사라짐이 감지됨(unfollowed_at)' 범위로만 추정할 수 있다."""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     with _get_db() as conn:
@@ -31,13 +34,15 @@ def process_follower_snapshot(user_id: int, followers: list) -> int:
 
         for username in unfollowed:
             conn.execute(
-                """INSERT INTO unfollower_events (user_id, username, followed_at, unfollowed_at)
-                   VALUES (?, ?, ?, ?)
+                """INSERT INTO unfollower_events
+                       (user_id, username, followed_at, last_seen_at, unfollowed_at)
+                   VALUES (?, ?, ?, ?, ?)
                    ON CONFLICT(user_id, username) DO UPDATE
                    SET followed_at=excluded.followed_at,
+                       last_seen_at=excluded.last_seen_at,
                        unfollowed_at=excluded.unfollowed_at,
                        detected_at=CURRENT_TIMESTAMP""",
-                (int(user_id), username, prev[username], now_str)
+                (int(user_id), username, prev[username], last_seen_at, now_str)
             )
             count += 1
 
@@ -55,7 +60,7 @@ def process_follower_snapshot(user_id: int, followers: list) -> int:
 def get_unfollower_events(user_id: int, search: str = "") -> list:
     with _get_db() as conn:
         rows = conn.execute(
-            """SELECT username, followed_at, unfollowed_at
+            """SELECT username, followed_at, last_seen_at, unfollowed_at
                FROM unfollower_events
                WHERE user_id = ?
                ORDER BY detected_at DESC""",

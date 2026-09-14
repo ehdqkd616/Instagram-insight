@@ -40,10 +40,12 @@ def following_page():
     sort      = request.args.get("sort", "newest")
     from_date = request.args.get("from_date", "")
     to_date   = request.args.get("to_date", "")
-    data  = get_following(_data_dir(), search, sort, from_date, to_date)
+    mutual    = request.args.get("mutual", "")
+    data  = get_following(_data_dir(), search, sort, from_date, to_date, mutual)
     stats = get_stats(_data_dir())
     return render_template("following.html", data=data, stats=stats,
-                           search=search, sort=sort, from_date=from_date, to_date=to_date)
+                           search=search, sort=sort, from_date=from_date, to_date=to_date,
+                           mutual=mutual)
 
 
 @bp.route("/unfollowers")
@@ -76,7 +78,8 @@ def api_following():
     sort      = request.args.get("sort", "newest")
     from_date = request.args.get("from_date", "")
     to_date   = request.args.get("to_date", "")
-    return jsonify(get_following(_data_dir(), search, sort, from_date, to_date))
+    mutual    = request.args.get("mutual", "")
+    return jsonify(get_following(_data_dir(), search, sort, from_date, to_date, mutual))
 
 
 @bp.route("/api/followers")

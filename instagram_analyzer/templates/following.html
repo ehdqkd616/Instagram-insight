@@ -67,6 +67,13 @@
         </select>
       </div>
       <div class="col-md-2">
+        <select name="mutual" class="form-select">
+          <option value=""           {% if mutual=='' %}selected{% endif %}>맞팔 여부 전체</option>
+          <option value="mutual"     {% if mutual=='mutual' %}selected{% endif %}>맞팔만</option>
+          <option value="not_mutual" {% if mutual=='not_mutual' %}selected{% endif %}>맞팔 안 됨만</option>
+        </select>
+      </div>
+      <div class="col-md-2">
         <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
       </div>
       <div class="col-md-2">

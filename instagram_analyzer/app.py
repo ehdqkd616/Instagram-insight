@@ -177,11 +177,14 @@ def create_app():
             if any("follower" in u.lower() for u in uploaded):
                 try:
                     from parsers import parse_followers
-                    from db import process_follower_snapshot, has_follower_snapshot
+                    from db import process_follower_snapshot, has_follower_snapshot, get_last_upload_at
                     followers = parse_followers(user_data_dir)
                     if followers:
                         had_prev = has_follower_snapshot(current_user.id)
-                        new_unfollowers_count = process_follower_snapshot(current_user.id, followers)
+                        last_seen_at = get_last_upload_at(current_user.id)
+                        new_unfollowers_count = process_follower_snapshot(
+                            current_user.id, followers, last_seen_at
+                        )
                         if had_prev and new_unfollowers_count > 0:
                             flash(
                                 f"언팔로워 {new_unfollowers_count}명 감지됐습니다! "
