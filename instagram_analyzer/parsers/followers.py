@@ -1,26 +1,33 @@
 import logging
 import os
 
-from parsers.utils import _fix_str, _load_json, _ts_to_str
+from parsers.utils import (
+    _fix_str, _load_json, _load_numbered_json_files, _ts_to_str, _username_from_href,
+)
 
 logger = logging.getLogger("instagram_analyzer.parsers.followers")
 
 
 def parse_followers(data_dir: str) -> list:
-    raw = _load_json(os.path.join(data_dir, "followers_1.json"), "followers")
-    if raw is None:
+    # 팔로워가 많으면 followers_1.json, followers_2.json, ... 으로 나뉘어 내보내진다.
+    raws = _load_numbered_json_files(data_dir, "followers_", "followers")
+    if not raws:
         return []
 
     results = []
-    for item in raw:
-        for entry in item.get("string_list_data", []):
-            results.append({
-                "username":    entry.get("value", ""),
-                "profile_url": entry.get("href", ""),
-                "followed_at": _ts_to_str(entry.get("timestamp", 0)),
-                "timestamp":   entry.get("timestamp", 0),
-            })
-    logger.info("[followers] 팔로워 %d명 파싱 완료", len(results))
+    for raw in raws:
+        for item in raw:
+            for entry in item.get("string_list_data", []):
+                href = entry.get("href", "")
+                # value가 실명/닉네임으로 깨져 나오는 경우가 있어, URL의 실제 계정 핸들을 우선한다.
+                username = _username_from_href(href) or _fix_str(entry.get("value", ""))
+                results.append({
+                    "username":    username,
+                    "profile_url": href,
+                    "followed_at": _ts_to_str(entry.get("timestamp", 0)),
+                    "timestamp":   entry.get("timestamp", 0),
+                })
+    logger.info("[followers] 팔로워 %d명 파싱 완료 (파일 %d개)", len(results), len(raws))
     return results
 
 
@@ -49,10 +56,17 @@ def parse_following(data_dir: str) -> list:
     for item in raw:
         item_title = item.get("title", "")
         for entry in item.get("string_list_data", []):
-            username = item_title or entry.get("value", "")
+            href = entry.get("href", "")
+            # title은 실명/닉네임(한글 등 mojibake 포함 가능)인 경우가 있어
+            # 실제 계정 핸들인 URL과 value를 우선 사용한다.
+            username = (
+                _username_from_href(href)
+                or _fix_str(entry.get("value", ""))
+                or _fix_str(item_title)
+            )
             results.append({
                 "username":    username,
-                "profile_url": entry.get("href", ""),
+                "profile_url": href,
                 "followed_at": _ts_to_str(entry.get("timestamp", 0)),
                 "timestamp":   entry.get("timestamp", 0),
             })
@@ -80,6 +94,8 @@ def parse_recently_unfollowed(data_dir: str) -> list:
             elif label == "URL" and val.startswith("http") and "instagram.com" in val:
                 profile_url = val
 
+        # value가 실명/닉네임으로 깨져 나오는 경우가 있어, URL의 실제 계정 핸들을 우선한다.
+        username = _username_from_href(profile_url) or _fix_str(username)
         if not username:
             continue
         if not profile_url:
