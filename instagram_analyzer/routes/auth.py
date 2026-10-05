@@ -3,6 +3,7 @@ import logging
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
+from services.notify import notify_signup_async
 from db import (
     admin_update_user, create_user, find_user_by_username, list_users,
     get_security_question, set_security_qa, verify_security_answer,
@@ -87,6 +88,7 @@ def register():
                 if user.status == "approved":
                     flash("회원가입이 완료됐습니다. 로그인해주세요.", "success")
                 else:
+                    notify_signup_async(user.username, display_name)
                     flash("회원가입 신청이 완료됐습니다. 관리자 승인 후 로그인할 수 있습니다.", "info")
                 return redirect(url_for("auth.login"))
 
