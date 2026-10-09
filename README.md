@@ -1,5 +1,7 @@
 # 📸 Instagram Analyzer
 
+> 🔗 **배포 주소:** https://insta.hotgarlic.dedyn.io
+
 인스타그램 공식 데이터 내보내기 파일을 분석하는 **로컬 전용 웹 애플리케이션**입니다.  
 모든 데이터는 내 PC에서만 처리되며 외부로 전송되지 않습니다.
 
