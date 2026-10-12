@@ -1,4 +1,5 @@
 import logging
+import re
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -10,6 +11,9 @@ from db import (
 )
 
 bp = Blueprint("auth", __name__)
+
+# 아이디: 영문/숫자/_/- 3~32자 (모든 프로젝트 공통 규칙)
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,32}$")
 logger = logging.getLogger("instagram_analyzer.auth")
 
 SECURITY_QUESTIONS = [
@@ -62,20 +66,16 @@ def register():
         display_name = request.form.get("display_name", "").strip()
         password     = request.form.get("password", "")
         confirm      = request.form.get("confirm", "")
-        sec_q        = request.form.get("security_question", "").strip()
-        sec_a        = request.form.get("security_answer", "").strip()
 
         error = None
         if not username or not password:
             error = "아이디와 비밀번호를 입력해주세요."
-        elif len(username) < 3:
-            error = "아이디는 3자 이상이어야 합니다."
-        elif len(password) < 6:
-            error = "비밀번호는 6자 이상이어야 합니다."
+        elif not USERNAME_RE.match(username):
+            error = "아이디는 영문, 숫자, _, - 조합 3~32자여야 합니다."
+        elif len(password) < 8:
+            error = "비밀번호는 8자 이상이어야 합니다."
         elif password != confirm:
             error = "비밀번호가 일치하지 않습니다."
-        elif not sec_q or not sec_a:
-            error = "비밀번호 찾기를 위해 보안 질문과 답을 입력해주세요."
 
         if error:
             flash(error, "danger")
@@ -84,7 +84,6 @@ def register():
             if user is None:
                 flash("이미 사용 중인 아이디입니다.", "danger")
             else:
-                set_security_qa(user.id, sec_q, sec_a)
                 if user.status == "approved":
                     flash("회원가입이 완료됐습니다. 로그인해주세요.", "success")
                 else:
@@ -92,7 +91,7 @@ def register():
                     flash("회원가입 신청이 완료됐습니다. 관리자 승인 후 로그인할 수 있습니다.", "info")
                 return redirect(url_for("auth.login"))
 
-    return render_template("register.html", security_questions=SECURITY_QUESTIONS)
+    return render_template("register.html")
 
 
 @bp.route("/settings", methods=["GET", "POST"])
@@ -115,8 +114,8 @@ def settings():
             confirm    = request.form.get("confirm", "")
             if not current_user.check_password(current_pw):
                 flash("현재 비밀번호가 올바르지 않습니다.", "danger")
-            elif len(new_pw) < 6:
-                flash("새 비밀번호는 6자 이상이어야 합니다.", "danger")
+            elif len(new_pw) < 8:
+                flash("새 비밀번호는 8자 이상이어야 합니다.", "danger")
             elif new_pw != confirm:
                 flash("새 비밀번호가 일치하지 않습니다.", "danger")
             else:
@@ -216,8 +215,8 @@ def forgot_password_reset():
     new_pw  = request.form.get("new_password", "")
     confirm = request.form.get("confirm", "")
 
-    if len(new_pw) < 6:
-        flash("비밀번호는 6자 이상이어야 합니다.", "danger")
+    if len(new_pw) < 8:
+        flash("비밀번호는 8자 이상이어야 합니다.", "danger")
         return render_template("find_account.html", step="pw_step3", username=username)
     if new_pw != confirm:
         flash("비밀번호가 일치하지 않습니다.", "danger")

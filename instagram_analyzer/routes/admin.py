@@ -9,6 +9,7 @@ from db import (
     admin_delete_user, admin_get_all_users, admin_set_user_status, admin_update_user,
     create_user, get_system_stats,
 )
+from routes.auth import USERNAME_RE
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -43,8 +44,11 @@ def create_user_action():
     if not username or not password:
         flash("아이디와 비밀번호를 입력해주세요.", "danger")
         return redirect(url_for("admin.dashboard"))
-    if len(password) < 6:
-        flash("비밀번호는 6자 이상이어야 합니다.", "danger")
+    if not USERNAME_RE.match(username):
+        flash("아이디는 영문, 숫자, _, - 조합 3~32자여야 합니다.", "danger")
+        return redirect(url_for("admin.dashboard"))
+    if len(password) < 8:
+        flash("비밀번호는 8자 이상이어야 합니다.", "danger")
         return redirect(url_for("admin.dashboard"))
 
     user = create_user(username, password, display_name)
@@ -72,8 +76,8 @@ def edit_user(user_id):
         new_password = request.form.get("new_password", "").strip()
         is_admin     = bool(request.form.get("is_admin"))
 
-        if new_password and len(new_password) < 6:
-            flash("비밀번호는 6자 이상이어야 합니다.", "danger")
+        if new_password and len(new_password) < 8:
+            flash("비밀번호는 8자 이상이어야 합니다.", "danger")
             return render_template("admin/edit_user.html", target=target)
 
         # 마지막 관리자의 관리자 권한은 제거 불가

@@ -5,6 +5,7 @@ from db.users import (
     find_user_by_id,
     find_user_by_username,
     list_users,
+    ensure_admin_account,
     update_instagram_username,
     set_security_qa,
     get_security_question,
@@ -38,7 +39,7 @@ from db.history import (
 
 __all__ = [
     "init_db",
-    "User", "create_user", "find_user_by_id", "find_user_by_username", "list_users",
+    "User", "create_user", "find_user_by_id", "find_user_by_username", "list_users", "ensure_admin_account",
     "update_instagram_username",
     "set_security_qa", "get_security_question", "verify_security_answer",
     "admin_get_all_users", "admin_update_user", "admin_delete_user", "admin_set_user_status",

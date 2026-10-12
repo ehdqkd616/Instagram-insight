@@ -64,6 +64,33 @@ def create_user(username: str, password: str, display_name: str = "",
         return None
 
 
+ADMIN_USERNAME = "admin"
+
+
+def ensure_admin_account(password: str) -> None:
+    """공통 관리자 계정 admin을 만들거나, 이미 있으면 승인·관리자 권한과 비밀번호를 맞춘다."""
+    with _get_db() as conn:
+        row = conn.execute(
+            "SELECT id, password_hash FROM users WHERE username = ?", (ADMIN_USERNAME,)
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO users (username, password_hash, display_name, status, is_admin) "
+                "VALUES (?, ?, ?, 'approved', 1)",
+                (ADMIN_USERNAME, generate_password_hash(password), "관리자"),
+            )
+            logger.info("관리자 계정 생성: username=%r", ADMIN_USERNAME)
+            return
+        user_id, password_hash = row
+        conn.execute("UPDATE users SET status='approved', is_admin=1 WHERE id=?", (user_id,))
+        if not check_password_hash(password_hash, password):
+            conn.execute(
+                "UPDATE users SET password_hash=? WHERE id=?",
+                (generate_password_hash(password), user_id),
+            )
+            logger.info("관리자 계정 비밀번호를 .env 값으로 맞춤: username=%r", ADMIN_USERNAME)
+
+
 def find_user_by_username(username: str) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(

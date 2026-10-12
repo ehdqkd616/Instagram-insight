@@ -37,10 +37,10 @@ if target is None:
     sys.exit(1)
 
 print(f"선택된 계정: {target.username} ({target.display_name})")
-new_pw = input("새 비밀번호 (6자 이상): ").strip()
+new_pw = input("새 비밀번호 (8자 이상): ").strip()
 
-if len(new_pw) < 6:
-    print("[오류] 비밀번호는 6자 이상이어야 합니다.")
+if len(new_pw) < 8:
+    print("[오류] 비밀번호는 8자 이상이어야 합니다.")
     input("Enter 키를 눌러 종료...")
     sys.exit(1)
 

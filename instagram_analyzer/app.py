@@ -17,7 +17,7 @@ _avatar_cache: dict[str, str] = {}
 
 from config import BASE_DIR, DATA_DIR, UPLOAD_FOLDER, ALLOWED_EXTENSIONS, get_secret_key
 from logging_config import setup_logging, read_recent_logs
-from db import init_db, find_user_by_id, update_instagram_username
+from db import ensure_admin_account, init_db, find_user_by_id, update_instagram_username
 from parsers import extract_zip, get_data_summary, detect_dm_my_name, parse_dm_from_zip
 from services.follower_service import get_stats
 
@@ -35,6 +35,9 @@ def create_app():
 
     os.makedirs(DATA_DIR, exist_ok=True)
     init_db()
+    # 관리자 아이디는 모든 프로젝트 공통으로 admin — 비밀번호는 .env의 ADMIN_PASSWORD
+    if os.environ.get("ADMIN_PASSWORD"):
+        ensure_admin_account(os.environ["ADMIN_PASSWORD"])
 
     logger.info("=" * 60)
     logger.info("Instagram Analyzer 시작 (worker pid=%d)", os.getpid())
