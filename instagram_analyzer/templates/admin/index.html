@@ -77,7 +77,9 @@
                 <span class="badge bg-secondary ms-1 small">나</span>
               {% endif %}
             </td>
-            <td>{{ u.display_name or '—' }}</td>
+            <td>{{ u.display_name or '—' }}
+              {% if u.signup_note %}<div class="small text-muted" style="white-space:pre-wrap">메모: {{ u.signup_note }}</div>{% endif %}
+            </td>
             <td>
               {% if u.instagram_username %}
                 <span class="small"><i class="bi bi-instagram me-1 text-ig-pink"></i>{{ u.instagram_username }}</span>

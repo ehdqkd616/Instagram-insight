@@ -48,12 +48,14 @@ def _row(label: str, value: str, last: bool = False) -> str:
             </td></tr>"""
 
 
-def _signup_html(username: str, display_name: str, signed_up_at: str, admin_url: str) -> str:
+def _signup_html(username: str, display_name: str, signed_up_at: str, admin_url: str, note: str = "") -> str:
     u, t, url = html.escape(username), html.escape(signed_up_at), html.escape(admin_url, quote=True)
     rows = [_row("아이디", u)]
     if display_name:
         rows.append(_row("표시 이름", html.escape(display_name)))
-    rows.append(_row("가입 일시 (한국 시간)", t, last=True))
+    rows.append(_row("가입 일시 (한국 시간)", t, last=not note))
+    if note:
+        rows.append(_row("가입 메모", html.escape(note), last=True))
     # 메일 클라이언트(특히 Gmail/Outlook)는 <style>과 flex를 제대로 지원하지 않아서
     # 테이블 + 인라인 스타일로만 짠다.
     return f"""\
@@ -109,10 +111,12 @@ def _signup_html(username: str, display_name: str, signed_up_at: str, admin_url:
 </html>"""
 
 
-def _signup_text(username: str, display_name: str, signed_up_at: str, admin_url: str) -> str:
+def _signup_text(username: str, display_name: str, signed_up_at: str, admin_url: str, note: str = "") -> str:
     lines = [f"[{APP_NAME}] 새 회원가입 승인 요청", "", f"아이디: {username}"]
     if display_name:
         lines.append(f"표시 이름: {display_name}")
+    if note:
+        lines.append(f"가입 메모: {note}")
     lines += [
         f"가입 일시: {signed_up_at} (한국 시간)",
         "",
@@ -123,7 +127,7 @@ def _signup_text(username: str, display_name: str, signed_up_at: str, admin_url:
     return "\n".join(lines)
 
 
-def build_signup_message(username: str, display_name: str, created_at: datetime) -> EmailMessage | None:
+def build_signup_message(username: str, display_name: str, created_at: datetime, note: str = "") -> EmailMessage | None:
     recipients = [e.strip() for e in _env("ADMIN_NOTIFY_EMAILS").split(",") if e.strip()]
     if not recipients:
         return None
@@ -137,17 +141,17 @@ def build_signup_message(username: str, display_name: str, created_at: datetime)
     msg["From"] = formataddr((f"{APP_NAME} 알림", sender))
     msg["To"] = ", ".join(recipients)
     msg["Message-ID"] = make_msgid(domain="instagram-insight.local")
-    msg.set_content(_signup_text(username, display_name, signed_up_at, admin_url))
-    msg.add_alternative(_signup_html(username, display_name, signed_up_at, admin_url), subtype="html")
+    msg.set_content(_signup_text(username, display_name, signed_up_at, admin_url, note))
+    msg.add_alternative(_signup_html(username, display_name, signed_up_at, admin_url, note), subtype="html")
     return msg
 
 
-def send_signup_notification(username: str, display_name: str, created_at: datetime) -> None:
+def send_signup_notification(username: str, display_name: str, created_at: datetime, note: str = "") -> None:
     user, password = _env("SMTP_USER"), _env("SMTP_PASSWORD")
     if not (user and password):
         logger.warning("SMTP 설정이 없어 가입 알림 메일을 건너뜁니다 (%s)", username)
         return
-    msg = build_signup_message(username, display_name, created_at)
+    msg = build_signup_message(username, display_name, created_at, note)
     if msg is None:
         return
 
@@ -168,9 +172,9 @@ def send_signup_notification(username: str, display_name: str, created_at: datet
         logger.exception("가입 알림 메일 발송 실패 (%s)", username)
 
 
-def notify_signup_async(username: str, display_name: str) -> None:
+def notify_signup_async(username: str, display_name: str, note: str = "") -> None:
     """가입 직후 호출 — 요청 스레드를 붙잡지 않도록 데몬 스레드에서 보낸다."""
     created_at = datetime.now(timezone.utc)
     threading.Thread(
-        target=send_signup_notification, args=(username, display_name, created_at), daemon=True
+        target=send_signup_notification, args=(username, display_name, created_at, note), daemon=True
     ).start()

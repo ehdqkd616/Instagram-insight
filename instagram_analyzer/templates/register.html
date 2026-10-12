@@ -73,6 +73,24 @@
               </div>
             </div>
 
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">가입 메모 <span class="text-muted">(선택) — 사용 목적 등을 남기면 승인이 빨라요</span></label>
+              <textarea name="signup_note" class="form-control" rows="2" maxlength="1000"></textarea>
+            </div>
+            <details class="mb-2 small text-muted">
+              <summary class="fw-semibold">이용약관 · 개인정보 처리방침 보기</summary>
+              <p class="mt-2 mb-1"><b>이용약관</b> — 이 서비스는 직접 내려받은 인스타그램 데이터를 분석해 보여 줍니다. 승인된 회원만 이용할 수 있고, 남용 시 이용이 정지될 수 있습니다.</p>
+              <p class="mb-0"><b>개인정보 처리방침</b> — 수집 항목: 아이디, 표시 이름, 가입 메모, 접속 기록, 업로드한 데이터. 이용 목적: 회원 관리와 서비스 제공. 탈퇴를 원하면 관리자에게 요청하세요.</p>
+            </details>
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="checkbox" name="agree_terms" id="agree_terms" value="1" required>
+              <label class="form-check-label small" for="agree_terms">이용약관에 동의합니다 (필수)</label>
+            </div>
+            <div class="form-check mb-4">
+              <input class="form-check-input" type="checkbox" name="agree_privacy" id="agree_privacy" value="1" required>
+              <label class="form-check-label small" for="agree_privacy">개인정보 수집·이용에 동의합니다 (필수)</label>
+            </div>
+
             <button type="submit" class="btn btn-ig w-100">
               <i class="bi bi-person-plus me-1"></i>회원가입
             </button>

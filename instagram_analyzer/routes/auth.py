@@ -66,6 +66,8 @@ def register():
         display_name = request.form.get("display_name", "").strip()
         password     = request.form.get("password", "")
         confirm      = request.form.get("confirm", "")
+        signup_note  = request.form.get("signup_note", "").strip()[:1000]
+        agreed       = request.form.get("agree_terms") and request.form.get("agree_privacy")
 
         error = None
         if not username or not password:
@@ -76,18 +78,20 @@ def register():
             error = "비밀번호는 8자 이상이어야 합니다."
         elif password != confirm:
             error = "비밀번호가 일치하지 않습니다."
+        elif not agreed:
+            error = "이용약관과 개인정보 처리방침에 동의해 주세요."
 
         if error:
             flash(error, "danger")
         else:
-            user = create_user(username, password, display_name, status="pending")
+            user = create_user(username, password, display_name, status="pending", signup_note=signup_note)
             if user is None:
                 flash("이미 사용 중인 아이디입니다.", "danger")
             else:
                 if user.status == "approved":
                     flash("회원가입이 완료됐습니다. 로그인해주세요.", "success")
                 else:
-                    notify_signup_async(user.username, display_name)
+                    notify_signup_async(user.username, display_name, signup_note)
                     flash("회원가입 신청이 완료됐습니다. 관리자 승인 후 로그인할 수 있습니다.", "info")
                 return redirect(url_for("auth.login"))
 

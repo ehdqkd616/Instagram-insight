@@ -15,7 +15,7 @@ logger = logging.getLogger("instagram_analyzer.db.users")
 class User(UserMixin):
     def __init__(self, id: int, username: str, password_hash: str,
                  display_name: str = "", instagram_username: str = "", is_admin: int = 0,
-                 status: str = "approved"):
+                 status: str = "approved", signup_note: str = ""):
         self.id = id
         self.username = username
         self.password_hash = password_hash
@@ -23,6 +23,7 @@ class User(UserMixin):
         self.instagram_username = instagram_username
         self.is_admin = bool(is_admin)
         self.status = status
+        self.signup_note = signup_note or ""
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
@@ -44,7 +45,7 @@ class User(UserMixin):
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
 def create_user(username: str, password: str, display_name: str = "",
-                 status: str = "approved") -> "User | None":
+                 status: str = "approved", signup_note: str = "") -> "User | None":
     ph = generate_password_hash(password)
     try:
         with _get_db() as conn:
@@ -52,9 +53,9 @@ def create_user(username: str, password: str, display_name: str = "",
             # 최초 가입자는 관리자가 없으므로 스스로를 승인할 수 없음 — 자동으로 관리자+승인 처리
             final_status = "approved" if is_first else status
             cur = conn.execute(
-                "INSERT INTO users (username, password_hash, display_name, status, is_admin) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (username.strip(), ph, display_name.strip(), final_status, 1 if is_first else 0),
+                "INSERT INTO users (username, password_hash, display_name, status, is_admin, signup_note) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (username.strip(), ph, display_name.strip(), final_status, 1 if is_first else 0, signup_note.strip()),
             )
             user_id = cur.lastrowid
         logger.info("신규 사용자 생성: id=%d username=%r status=%s", user_id, username, final_status)
@@ -94,7 +95,7 @@ def ensure_admin_account(password: str) -> None:
 def find_user_by_username(username: str) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status, signup_note "
             "FROM users WHERE username = ?",
             (username.strip(),),
         ).fetchone()
@@ -104,7 +105,7 @@ def find_user_by_username(username: str) -> "User | None":
 def find_user_by_id(user_id: int) -> "User | None":
     with _get_db() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status, signup_note "
             "FROM users WHERE id = ?",
             (int(user_id),),
         ).fetchone()
@@ -114,7 +115,7 @@ def find_user_by_id(user_id: int) -> "User | None":
 def list_users() -> list:
     with _get_db() as conn:
         rows = conn.execute(
-            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status "
+            "SELECT id, username, password_hash, display_name, instagram_username, is_admin, status, signup_note "
             "FROM users"
         ).fetchall()
     return [User(*r) for r in rows]
@@ -166,7 +167,7 @@ def admin_get_all_users() -> list:
         rows = conn.execute("""
             SELECT
                 u.id, u.username, u.display_name, u.instagram_username,
-                u.is_admin, u.status, u.created_at,
+                u.is_admin, u.status, u.signup_note, u.created_at,
                 (SELECT COUNT(*) FROM upload_history    WHERE user_id = u.id) AS upload_count,
                 (SELECT COUNT(*) FROM dm_activity       WHERE user_id = u.id) AS dm_count,
                 (SELECT COUNT(*) FROM follower_snapshots WHERE user_id = u.id) AS snapshot_count,

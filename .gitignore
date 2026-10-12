@@ -89,3 +89,4 @@ $RECYCLE.BIN/
 
 instance/
 .webassets-cache
+instagram_analyzer/users.db.bak-*
