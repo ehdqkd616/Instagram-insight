@@ -1,0 +1,57 @@
+{# 로그인하지 않은 방문자에게 보여 주는 서비스 소개 홈 화면. 스타일은 static/css/landing.css(.lp- 접두사) #}
+{% set features = [
+  ("👥", "팔로워·팔로잉 목록", "나를 팔로우하는 계정과 내가 팔로우하는 계정을 검색·정렬하고 CSV로 내보내요."),
+  ("💔", "언팔 분석", "맞팔이 아닌 계정, 나만 팔로우하는 계정, 나를 언팔한 계정을 찾아 줘요."),
+  ("🔍", "활동 검색", "계정별로 좋아요·댓글 내역과 DM 기록을 검색할 수 있어요."),
+  ("📈", "변화 추이", "데이터를 올릴 때마다 팔로워·팔로잉 수를 기록해 변화를 비교해요."),
+] %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Instagram Insight</title>
+  <link href="{{ url_for('static', filename='css/landing.css') }}" rel="stylesheet">
+  <style>body { margin: 0; }</style>
+</head>
+<body>
+<div class="lp">
+  <section class="lp-hero">
+    <div class="lp-icon" aria-hidden="true">📸</div>
+    <h1 class="lp-title">Instagram Insight</h1>
+    <p class="lp-tagline">인스타그램 데이터 내보내기 파일 분석기</p>
+    <p class="lp-intro">인스타그램에서 내려받은 내 정보 파일을 올리면, 팔로워·언팔로워·활동 기록을 보기 쉽게 정리해 보여 줘요.</p>
+    <div class="lp-cta">
+      <a href="{{ url_for('auth.login') }}" class="lp-btn lp-btn-primary">로그인</a>
+      <a href="{{ url_for('auth.register') }}" class="lp-btn">회원가입</a>
+    </div>
+    <p class="lp-access">회원가입 후 관리자 승인을 받으면 사용할 수 있어요.</p>
+  </section>
+
+  <section class="lp-section">
+    <h2 class="lp-h2">이런 걸 할 수 있어요</h2>
+    <ul class="lp-features">
+      {% for icon, title, desc in features %}
+      <li class="lp-feature">
+        <span class="lp-feature-icon" aria-hidden="true">{{ icon }}</span>
+        <div><h3>{{ title }}</h3><p>{{ desc }}</p></div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="lp-section">
+    <h2 class="lp-h2">사용 방법</h2>
+    <ol class="lp-steps">
+      <li>회원가입하고 관리자 승인을 기다려요.</li>
+      <li>인스타그램 앱 → 설정 → 계정 센터 → 내 정보 다운로드에서 JSON 형식으로 받아요.</li>
+      <li>받은 파일을 올리면 분석 결과를 볼 수 있어요.</li>
+    </ol>
+  </section>
+
+  <footer class="lp-footer">
+    <a href="https://multi-tools.hotgarlic.dedyn.io">다른 프로젝트 둘러보기 →</a>
+  </footer>
+</div>
+</body>
+</html>

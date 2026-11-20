@@ -107,8 +107,10 @@ def create_app():
 
     # ── 메인 라우트 ──────────────────────────────────────
     @app.route("/")
-    @login_required
     def index():
+        # 로그인 전: 로그인 화면으로 보내지 않고 서비스 소개를 보여 준다
+        if not current_user.is_authenticated:
+            return render_template("landing.html")
         summary = get_data_summary(current_user.data_dir)
         has_data = any(summary.values())
         stats = get_stats(current_user.data_dir, current_user.id) if has_data else None
